@@ -1,7 +1,7 @@
 from typing import Any
 import numpy as np
 from random import choices, random
-from .patterns_dirty import neighbors, pairs
+from .patterns import neighbors, pairs
 import copy
 
 

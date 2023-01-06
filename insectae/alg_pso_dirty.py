@@ -3,7 +3,7 @@ from random import random
 from .targets import RandomRealVector
 from .alg_base import Algorithm
 from .common_dirty import evalf, copyAttribute, simpleMove
-from .patterns_dirty import foreach, reducePop, evaluate
+from .patterns import foreach, reducePop, evaluate
 import copy
 
 
@@ -33,7 +33,7 @@ class particleSwarmOptimization(Algorithm):
         super().start("alphabeta gamma g", "&x f *fNew v p")
         foreach(self.population, self.opInit, key='x', **self.env)
         foreach(self.population, copyAttribute, keyFrom='x', keyTo='p', **self.env)
-        evaluate(self.population, keyx='x', keyf='f', **self.env)
+        evaluate(self.population, keyx='x', keyf='f', env=self.env)
         foreach(self.population, copyAttribute, keyFrom='f', keyTo='fNew', **self.env)
         vel = self.delta * (self.target.bounds[1] - self.target.bounds[0])
         foreach(self.population, RandomRealVector((-vel, vel)), key='v', **self.env)
@@ -42,12 +42,12 @@ class particleSwarmOptimization(Algorithm):
         ext = lambda x: (x['p'], x['f'])
         op = lambda x, y: x if self.goal.isBetter(x[1], y[1]) else y
         post = lambda x: x[0]
-        self.env['g'] = reducePop(self.population, ext, op, post, _t='reduce', **self.env)
-        foreach(self.population, self.updateVel, _t='updatevel', **self.env)
-        foreach(self.population, self.opLimitVel, key='v', _t='limitvel', **self.env)
-        foreach(self.population, simpleMove, keyx='x', keyv='v', dt=1.0, _t='move', **self.env)
-        evaluate(self.population, keyx='x', keyf='fNew', _t='evaluate', **self.env)
-        foreach(self.population, self.updateBestPosition, _t='updatebest', **self.env)
+        self.env['g'] = reducePop(self.population, ext, op, post, timingLabel='reduce')
+        foreach(self.population, self.updateVel, timingLabel='updatevel', **self.env)
+        foreach(self.population, self.opLimitVel, key='v', timingLabel='limitvel', **self.env)
+        foreach(self.population, simpleMove, keyx='x', keyv='v', dt=1.0, timingLabel='move', **self.env)
+        evaluate(self.population, keyx='x', keyf='fNew', timingLabel='evaluate', env=self.env)
+        foreach(self.population, self.updateBestPosition, timingLabel='updatebest', **self.env)
 
 class randomAlphaBeta:
     def __init__(self, a, b=0):
