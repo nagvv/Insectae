@@ -2,7 +2,7 @@ import numpy as np
 from random import random
 from .targets import RandomRealVector
 from .alg_base import Algorithm
-from .common_dirty import evalf, copyAttribute, simpleMove
+from .common import evalf, copyAttribute, simpleMove
 from .patterns import foreach, reducePop, evaluate
 import copy
 
@@ -32,9 +32,9 @@ class particleSwarmOptimization(Algorithm):
     def start(self):
         super().start("alphabeta gamma g", "&x f *fNew v p")
         foreach(self.population, self.opInit, key='x', **self.env)
-        foreach(self.population, copyAttribute, keyFrom='x', keyTo='p', **self.env)
+        foreach(self.population, copyAttribute, keyFrom='x', keyTo='p')
         evaluate(self.population, keyx='x', keyf='f', env=self.env)
-        foreach(self.population, copyAttribute, keyFrom='f', keyTo='fNew', **self.env)
+        foreach(self.population, copyAttribute, keyFrom='f', keyTo='fNew')
         vel = self.delta * (self.target.bounds[1] - self.target.bounds[0])
         foreach(self.population, RandomRealVector((-vel, vel)), key='v', **self.env)
 
@@ -45,7 +45,7 @@ class particleSwarmOptimization(Algorithm):
         self.env['g'] = reducePop(self.population, ext, op, post, timingLabel='reduce')
         foreach(self.population, self.updateVel, timingLabel='updatevel', **self.env)
         foreach(self.population, self.opLimitVel, key='v', timingLabel='limitvel', **self.env)
-        foreach(self.population, simpleMove, keyx='x', keyv='v', dt=1.0, timingLabel='move', **self.env)
+        foreach(self.population, simpleMove, keyx='x', keyv='v', dt=1.0, timingLabel='move')
         evaluate(self.population, keyx='x', keyf='fNew', timingLabel='evaluate', env=self.env)
         foreach(self.population, self.updateBestPosition, timingLabel='updatebest', **self.env)
 
