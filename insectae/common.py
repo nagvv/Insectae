@@ -1,23 +1,28 @@
 import copy
 from random import choices, random
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, List, Union, TypeVar
 
 import numpy as np
 
 from .patterns import neighbors, pairs
+from .typing import Individual, Evaluable
+
+# TODO move some to the operators.py or move these here
+
+_T = TypeVar("_T")
 
 
-def evalf(param: Any, **opkwargs):
+def evalf(param: Evaluable[_T], **opkwargs) -> _T:
     if callable(param):
         return param(**opkwargs)
     return param
 
 
-class fillAttribute:
+class FillAttribute:
     def __init__(self, op: Any) -> None:
         self.op = op
 
-    def __call__(self, ind: dict, key: str, **opkwargs) -> None:
+    def __call__(self, ind: Individual, key: str, **opkwargs) -> None:
         if callable(self.op):
             ind[key] = self.op(**opkwargs)
         elif np.isscalar(self.op):
@@ -27,51 +32,51 @@ class fillAttribute:
             ind[key] = self.op.copy()
 
 
-def copyAttribute(ind: dict, keyFrom: str, keyTo: str) -> None:
+def copyAttribute(ind: Individual, keyFrom: str, keyTo: str) -> None:
     if np.isscalar(ind[keyFrom]):
         ind[keyTo] = ind[keyFrom]
     else:
         ind[keyTo] = ind[keyFrom].copy()
 
 
-class mixture:
+class Mixture:
     def __init__(self, methods: List[Callable[..., None]], probs: List[float]) -> None:
         self.methods = methods + [lambda *args, **kwargs: None]  # append no-op
         self.probs = probs + [1.0 - np.sum(probs)]
 
-    def __call__(self, inds: List[Dict[str, Any]], **opkwargs) -> None:
+    def __call__(self, inds: List[Individual], **opkwargs) -> None:
         method = choices(self.methods, weights=self.probs)[0]
         method(inds, **opkwargs)
 
 
-class probOp:
+class ProbOp:
     def __init__(
         self, method: Callable[..., None], prob: Union[float, Callable[..., float]]
     ) -> None:
         self.method = method
         self.prob = prob
 
-    def __call__(self, inds: List[Dict[str, Any]], **opkwargs) -> None:
+    def __call__(self, inds: List[Individual], **opkwargs) -> None:
         prob = evalf(self.prob, inds=inds, **opkwargs)
         if random() < prob:
             self.method(inds, **opkwargs)
 
 
-class timedOp:
+class TimedOp:
     def __init__(self, method: Callable[..., None], dt: int) -> None:
         self.method = method
         self.dt = dt
 
-    def __call__(self, inds: List[Dict[str, Any]], time, **opkwargs) -> None:
+    def __call__(self, inds: List[Individual], time: int, **opkwargs) -> None:
         if time % self.dt == 0:
-            self.method(inds, **opkwargs)
+            self.method(inds, time=time, **opkwargs)
 
 
-class shuffled:
+class Shuffled:
     def __init__(self, op: Callable[..., None]) -> None:
         self.op = op
 
-    def __call__(self, population: List[Dict[str, Any]], **opkwargs) -> None:
+    def __call__(self, population: List[Individual], **opkwargs) -> None:
         perm = list(range(len(population)))
         np.random.shuffle(perm)
         neighbors(population, self.op, perm, **opkwargs)
@@ -82,17 +87,17 @@ def samplex(n: int, m: int, exclude: List[int]) -> List[int]:
     return list(np.random.choice(s, m, False))
 
 
-class selected:
+class Selected:
     def __init__(self, op: Callable[..., None]) -> None:
         self.op = op
 
-    def __call__(self, population: List[Dict[str, Any]], **opkwargs) -> None:
-        shadow: List[Dict[str, Any]] = []
+    def __call__(self, population: List[Individual], **opkwargs) -> None:
+        shadow: List[Individual] = []
         for i in range(len(population)):
             j = samplex(len(population), 1, [i])[0]
             shadow.append(copy.deepcopy(population[j]))
         pairs(population, shadow, self.op, **opkwargs)
 
 
-def simpleMove(ind: Dict[str, Any], keyx: str, keyv: str, dt: float) -> None:
+def simpleMove(ind: Individual, keyx: str, keyv: str, dt: float) -> None:
     ind[keyx] += dt * ind[keyv]

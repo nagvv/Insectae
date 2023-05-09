@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 from .metrics import Metrics
+from .typing import Environment
 
 
 class StopMaxGeneration:
@@ -8,7 +9,7 @@ class StopMaxGeneration:
         self._metrics = metrics
         self._maxGen = maxGen
 
-    def __call__(self, env: Dict[str, Any]) -> bool:
+    def __call__(self, env: Environment) -> bool:
         self._metrics.newGeneration()  # TODO move out from here, leave only checks
         return self._metrics.currentGeneration > self._maxGen
 
@@ -18,7 +19,7 @@ class StopMaxEF:
         self._metrics = metrics
         self._maxEF = maxEF
 
-    def __call__(self, env: Dict[str, Any]) -> bool:
+    def __call__(self, env: Environment) -> bool:
         self._metrics.newGeneration()
         return self._metrics.efs > self._maxEF
 
@@ -29,7 +30,7 @@ class StopValue:
         self._value = value
         self._maxGen = maxGen
 
-    def __call__(self, env: Dict[str, Any]) -> bool:
+    def __call__(self, env: Environment) -> bool:
         self._metrics.newGeneration()
         goal = env["goal"]
         valIsBetter = goal.isBetter(self._value, self._metrics.bestValue)

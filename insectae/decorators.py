@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from .alg_base import Algorithm
 from .timer import Timer
+from .typing import Individual, Environment
 
 
 def decorate(obj: Any, decorators: List[Callable[[Any], None]]) -> None:
@@ -18,11 +19,11 @@ class TimeIt:
         if "timeIt" in alg.decorators:
             return
 
-        def _start(population: List[dict], env: Dict[str, Any]) -> None:
+        def _start(population: List[Individual], env: Environment) -> None:
             alg.env["timer"] = self._timer
             self._timer.startGlobal()
 
-        def _finish(population: List[dict], env: Dict[str, Any]) -> None:
+        def _finish(population: List[Individual], env: Environment) -> None:
             self._timer.stopGlobal()
 
         alg.addProcedure("start", _start)
@@ -35,11 +36,11 @@ class RankIt:
         if "rankIt" in alg.decorators:
             return
 
-        def _start(population: List[dict], env: Dict[str, Any]) -> None:
+        def _start(population: List[Individual], env: Environment) -> None:
             for i, _ in enumerate(population):
                 population[i]["_rank"] = i
 
-        def _enter(population: List[dict], env: Dict[str, Any]) -> None:
+        def _enter(population: List[Individual], env: Environment) -> None:
             solutionValueLabel = env["solutionValueLabel"]
             ranks = list(map(lambda x: x["_rank"], population))
             ranks.sort(
@@ -75,8 +76,9 @@ class AddElite:
         if "addElite" in alg.decorators:
             return
 
-        def _enter(population: List[dict], env: Dict[str, Any]) -> None:
+        def _enter(population: List[Individual], env: Environment) -> None:
             solutionValueLabel = env["solutionValueLabel"]
+            # TODO use item with changeable key inside env instead of alg
             alg.elite = {}
             pop_size = len(population)
             if self._size is None:
@@ -93,7 +95,7 @@ class AddElite:
                         indexes[i], indexes[j] = indexes[j], indexes[i]
                 alg.elite[indexes[i]] = deepcopy(population[indexes[i]])
 
-        def _exit(population: List[dict], env: Dict[str, Any]) -> None:
+        def _exit(population: List[dict], env: Environment) -> None:
             solutionValueLabel = env["solutionValueLabel"]
             for idx, elite_ind in alg.elite.items():
                 if env["goal"].isBetter(

@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
 
+from .typing import Individual
 from .metrics import Metrics
 
 
@@ -28,13 +29,6 @@ class Target:
         raise NotImplementedError
 
 
-# TODO: consider adding base class for these random generators
-class RandomBinaryVector:
-    def __call__(self, ind: Dict[str, Any], **xt) -> None:
-        dim = xt["target"].dimension
-        ind[xt["key"]] = np.random.randint(2, size=dim)
-
-
 class BinaryTarget(Target):
     def __init__(
         self,
@@ -48,6 +42,34 @@ class BinaryTarget(Target):
         return RandomBinaryVector()
 
 
+# TODO: consider adding base class for these random generators
+class RandomBinaryVector:
+    def __call__(
+        self,
+        ind: Individual,
+        target: Target,
+        key: str,
+        **kwargs
+    ) -> None:
+        dim = target.dimension
+        ind[key] = np.random.randint(2, size=dim)
+
+
+class RealTarget(Target):
+    def __init__(
+        self,
+        target: Callable[[Any], Any],
+        dimension: int,
+        metrics: Metrics,
+        bounds: Tuple[float, float],
+    ) -> None:
+        super().__init__("real", target, dimension, metrics)
+        self.bounds = bounds
+
+    def defaultInit(self) -> Callable[..., None]:
+        return RandomRealVector()
+
+
 class RandomRealVector:
     def __init__(
         self, bounds: Optional[Union[float, Tuple[float, float]]] = None
@@ -58,36 +80,19 @@ class RandomRealVector:
         else:
             self.bounds = bounds  # either tuple or None
 
-    def __call__(self, ind: Dict[str, Any], **xt) -> None:
-        dim = xt["target"].dimension
+    def __call__(
+        self,
+        ind: Individual,
+        target: RealTarget,
+        key: str,
+        **kwargs
+    ) -> None:
+        dim = target.dimension
         if self.bounds is not None:
             low, high = self.bounds
         else:
-            low, high = xt["target"].bounds
-        ind[xt["key"]] = low + (high - low) * np.random.rand(dim)
-
-
-class RealTarget(Target):
-    def __init__(
-        self,
-        target: Callable[[Any], Any],
-        dimension: int,
-        metrics: Metrics,
-        bounds: Tuple[float, float]
-    ) -> None:
-        super().__init__("real", target, dimension, metrics)
-        self.bounds = bounds
-
-    def defaultInit(self) -> Callable[..., None]:
-        return RandomRealVector()
-
-
-class RandomPermutation:
-    def __call__(self, ind: Dict[str, Any], **xt) -> None:
-        dim = xt["target"].dimension
-        key = xt["key"]
-        ind[key] = np.array(list(range(dim)))
-        np.random.shuffle(ind[key])
+            low, high = target.bounds
+        ind[key] = low + (high - low) * np.random.rand(dim)
 
 
 class PermutationTarget(Target):
@@ -101,3 +106,16 @@ class PermutationTarget(Target):
 
     def defaultInit(self) -> Callable[..., None]:
         return RandomPermutation()
+
+
+class RandomPermutation:
+    def __call__(
+        self,
+        ind: Individual,
+        target: Target,
+        key: str,
+        **kwargs
+    ) -> None:
+        dim = target.dimension
+        ind[key] = np.array(list(range(dim)))
+        np.random.shuffle(ind[key])
