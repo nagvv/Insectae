@@ -30,7 +30,7 @@ class FireflyAlgorithm(Algorithm):
         super().__init__(**kwargs)
 
     def start(self) -> None:
-        super().start(
+        super().init_attributes(
             "alpha alphabest betamin gamma theta", "&x *val vel tval neighbors"
         )
         if self.env["alphabest"] is None:

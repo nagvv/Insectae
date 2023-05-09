@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Callable, List, Dict, Any
 
 from .alg_base import Algorithm
 from .common import evalf, samplex
@@ -18,11 +18,11 @@ class DifferentialEvolution(Algorithm):
         self.opMakeProbe = opMakeProbe
         self.opCrossover = opCrossover
         self.opSelect = opSelect
-        self.probes = []
+        self.probes: List[Dict[str, Any]] = []
         super().__init__(**kwargs)
 
     def start(self) -> None:
-        super().start("", "&x *f")
+        super().init_attributes("", "&x *f")
         self.probes = [{"x": None, "f": None} for i in range(self.popSize)]
         foreach(self.population, self.opInit, key="x", **self.env)
         evaluate(self.population, keyx="x", keyf="f", env=self.env)

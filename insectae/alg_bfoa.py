@@ -65,7 +65,7 @@ class BacterialForagingAlgorithm(Algorithm):
         ind["fTotal"] = (gamma * ind["fTotal"] + ind["fNew"]) / (gamma + 1)
 
     def start(self) -> None:
-        super().start("vel gamma probRotate", "&x *f fNew fs fTotal v")
+        super().init_attributes("vel gamma probRotate", "&x *f fNew fs fTotal v")
         foreach(self.population, self.opInit, key="x", **self.env)
         evaluate(self.population, keyx="x", keyf="f", env=self.env)
         foreach(self.population, self.initVel, **self.env)

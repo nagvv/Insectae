@@ -53,7 +53,7 @@ class Algorithm:
             self.exit()
         self.finish()
 
-    def start(self, envAttrs: str = "", indAttrs: str = "") -> None:
+    def init_attributes(self, envAttrs: str, indAttrs: str) -> None:
         # environment
         keys = ["target", "goal", "time", "popSize"] + envAttrs.split()
         self.env = {key: None for key in keys}
@@ -68,7 +68,11 @@ class Algorithm:
         self.population = [ind.copy() for _ in range(self.popSize)]
         self.runAdds("start")
 
+    def start(self) -> None:
+        self.init_attributes("", "")
+
     def enter(self) -> None:
+        assert isinstance(self.env["time"], int)
         self.env["time"] += 1
         self.runAdds("enter")
 

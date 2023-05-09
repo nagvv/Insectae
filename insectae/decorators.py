@@ -79,7 +79,7 @@ class AddElite:
         def _enter(population: List[Individual], env: Environment) -> None:
             solutionValueLabel = env["solutionValueLabel"]
             # TODO use item with changeable key inside env instead of alg
-            alg.elite = {}
+            setattr(alg, "elite", {})
             pop_size = len(population)
             if self._size is None:
                 assert self._ratio is not None
@@ -93,11 +93,11 @@ class AddElite:
                         population[indexes[i]][solutionValueLabel],
                     ):
                         indexes[i], indexes[j] = indexes[j], indexes[i]
-                alg.elite[indexes[i]] = deepcopy(population[indexes[i]])
+                getattr(alg, "elite")[indexes[i]] = deepcopy(population[indexes[i]])
 
         def _exit(population: List[dict], env: Environment) -> None:
             solutionValueLabel = env["solutionValueLabel"]
-            for idx, elite_ind in alg.elite.items():
+            for idx, elite_ind in getattr(alg, "elite").items():
                 if env["goal"].isBetter(
                     elite_ind[solutionValueLabel], population[idx][solutionValueLabel]
                 ):

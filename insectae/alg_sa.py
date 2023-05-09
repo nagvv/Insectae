@@ -22,7 +22,7 @@ class SimulatedAnnealing(Algorithm):
         super().__init__(**kwargs)
 
     def start(self) -> None:
-        super().start("theta", "&x xNew *f fNew")
+        super().init_attributes("theta", "&x xNew *f fNew")
         foreach(self.population, self.opInit, key="x", **self.env)
         evaluate(self.population, keyx="x", keyf="f", env=self.env)
 

@@ -18,7 +18,7 @@ class GeneticAlgorithm(Algorithm):
         super().__init__(**kwargs)
 
     def start(self) -> None:
-        super().start("", "&x *f")
+        super().init_attributes("", "&x *f")
         foreach(population=self.population, op=self.opInit, key="x", **self.env)
         evaluate(population=self.population, keyx="x", keyf="f", env=self.env)
 

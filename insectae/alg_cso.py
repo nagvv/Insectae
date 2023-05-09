@@ -49,7 +49,7 @@ class CompetitiveSwarmOptimizer(Algorithm):
         loser["x"] += loser["v"]
 
     def start(self) -> None:
-        super().start("socialFactor x", "&x *f v reEval")
+        super().init_attributes("socialFactor x", "&x *f v reEval")
         foreach(self.population, self.opInit, key="x", **self.env)
         evaluate(self.population, keyx="x", keyf="f", env=self.env)
         vel = self.delta * (self.target.bounds[1] - self.target.bounds[0])

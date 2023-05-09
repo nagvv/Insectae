@@ -49,7 +49,7 @@ class ParticleSwarmOptimization(Algorithm):
             ind["f"] = ind["fNew"]
 
     def start(self) -> None:
-        super().start("alphabeta gamma g", "&x f *fNew v p")
+        super().init_attributes("alphabeta gamma g", "&x f *fNew v p")
         foreach(self.population, self.opInit, key="x", **self.env)
         foreach(self.population, copyAttribute, keyFrom="x", keyTo="p")
         evaluate(self.population, keyx="x", keyf="f", env=self.env)

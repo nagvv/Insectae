@@ -30,7 +30,7 @@ class BeesAlgorithm(Algorithm):
         RankIt()(self)
 
     def start(self) -> None:
-        super().start("", "&x *f")
+        super().init_attributes("", "&x *f")
         bee: Individual = {"x": None, "f": None, "_rank": None}
         self.bees = [bee.copy() for i in range(self.beesNum)]
         self.opFly = OpFly(self.opProbs, self.opLocal, self.opGlobal, self.popSize)
