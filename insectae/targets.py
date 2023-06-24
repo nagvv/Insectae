@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
 
-from .typing import Individual
+from .typing import Individual, Environment
 from .metrics import Metrics
 
 
@@ -24,6 +24,12 @@ class Target:
             f = self.target(x)
         self.metrics.newEval(x, f, reEval)
         return f
+
+    def get_func(self) -> Callable[[Any], Any]:
+        return self.target
+
+    def update(self, x: Any, f: Any, reEval: bool) -> None:
+        self.metrics.newEval(x, f, reEval)
 
     def defaultInit(self) -> Callable[..., None]:
         raise NotImplementedError
@@ -49,7 +55,7 @@ class RandomBinaryVector:
         ind: Individual,
         target: Target,
         key: str,
-        **kwargs
+        env: Optional[Environment] = None
     ) -> None:
         dim = target.dimension
         ind[key] = np.random.randint(2, size=dim)
@@ -85,7 +91,7 @@ class RandomRealVector:
         ind: Individual,
         target: RealTarget,
         key: str,
-        **kwargs
+        env: Optional[Environment] = None
     ) -> None:
         dim = target.dimension
         if self.bounds is not None:
@@ -114,7 +120,7 @@ class RandomPermutation:
         ind: Individual,
         target: Target,
         key: str,
-        **kwargs
+        env: Optional[Environment] = None
     ) -> None:
         dim = target.dimension
         ind[key] = np.array(list(range(dim)))

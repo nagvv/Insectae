@@ -1,10 +1,9 @@
-from typing import Callable, List, Dict, Any
+from typing import Any, Callable, Dict, List
 
 from .alg_base import Algorithm
 from .common import evalf, samplex
 from .goals import Goal
-from .patterns import evaluate, foreach, pairs, pop2ind
-from .typing import Evaluable, Individual
+from .typing import Environment, Evaluable, Individual
 
 
 class DifferentialEvolution(Algorithm):
@@ -24,35 +23,52 @@ class DifferentialEvolution(Algorithm):
     def start(self) -> None:
         super().init_attributes("", "&x *f")
         self.probes = [{"x": None, "f": None} for i in range(self.popSize)]
-        foreach(self.population, self.opInit, key="x", **self.env)
-        evaluate(self.population, keyx="x", keyf="f", env=self.env)
+        self.executor.foreach(
+            self.population,
+            self.opInit,
+            {"target": self.target, "key": "x", "env": self.env},
+        )
+        self.executor.evaluate(self.population, keyx="x", keyf="f", env=self.env)
 
     def runGeneration(self) -> None:
-        pop2ind(
+        timer = self.env.get("timer")
+        self.executor.pop2ind(
             self.probes,
             self.population,
             self.opMakeProbe,
             keyx="x",
             keyf="f",
             timingLabel="makeprobes",
-            **self.env
+            timer=timer,
+            env=self.env,
         )
-        pairs(
+        self.executor.pairs(
             self.probes,
             self.population,
             self.opCrossover,
             key="x",
+            target=self.target,
             timingLabel="crossover",
-            **self.env
+            timer=timer,
+            env=self.env,
         )
-        evaluate(self.probes, keyx="x", keyf="f", timingLabel="evaluate", env=self.env)
-        pairs(
+        self.executor.evaluate(
+            self.probes,
+            keyx="x",
+            keyf="f",
+            timingLabel="evaluate",
+            timer=timer,
+            env=self.env,
+        )
+        self.executor.pairs(
             self.population,
             self.probes,
             self.opSelect,
             key="f",
+            goal=self.goal,
             timingLabel="select",
-            **self.env
+            timer=timer,
+            env=self.env,
         )
 
 
@@ -72,10 +88,11 @@ class ProbeClassic:
         ind: Individual,
         population: List[Individual],
         keyx: str,
+        keyf: str,
         index: int,
-        **kwargs
+        env: Environment,
     ) -> None:
-        weight = evalf(self.weight, inds=[ind], **kwargs)
+        weight = evalf(self.weight, inds=[ind], env=env)
         S = samplex(len(population), 3, [index])
         a, b, c = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx])
@@ -90,11 +107,12 @@ class ProbeBest:
         ind: Individual,
         population: List[Individual],
         keyx: str,
+        keyf: str,
         index: int,
-        **kwargs
+        env: Environment,
     ) -> None:
-        weight = evalf(self.weight, inds=[ind], **kwargs)
-        i = argbestDE(population, kwargs["keyf"], kwargs["goal"])
+        weight = evalf(self.weight, inds=[ind], env=env)
+        i = argbestDE(population, keyf, env["goal"])
         sample = [i] + samplex(len(population), 2, [index, i])
         a, b, c = [population[i] for i in sample]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx])
@@ -109,11 +127,12 @@ class ProbeCur2Best:
         ind: Individual,
         population: List[Individual],
         keyx: str,
+        keyf: str,
         index: int,
-        **kwargs
+        env: Environment,
     ) -> None:
-        weight = evalf(self.weight, inds=[ind], **kwargs)
-        i = argbestDE(population, kwargs["keyf"], kwargs["goal"])
+        weight = evalf(self.weight, inds=[ind], env=env)
+        i = argbestDE(population, keyf, env["goal"])
         S = [index, i] + samplex(len(population), 2, [index, i])
         cur, a, b, c = [population[i] for i in S]
         ind[keyx] = cur[keyx] + weight * (a[keyx] - cur[keyx] + b[keyx] - c[keyx])
@@ -128,11 +147,12 @@ class ProbeBest2:
         ind: Individual,
         population: List[Individual],
         keyx: str,
+        keyf: str,
         index: int,
-        **kwargs
+        env: Environment,
     ) -> None:
-        weight = evalf(self.weight, inds=[ind], **kwargs)
-        i = argbestDE(population, kwargs["keyf"], kwargs["goal"])
+        weight = evalf(self.weight, inds=[ind], env=env)
+        i = argbestDE(population, keyf, env["goal"])
         S = [i] + samplex(len(population), 4, [index, i])
         a, b, c, d, e = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx] + d[keyx] - e[keyx])
@@ -147,10 +167,11 @@ class probeRandom5:
         ind: Individual,
         population: List[Individual],
         keyx: str,
+        keyf: str,
         index: int,
-        **kwargs
+        env: Environment,
     ) -> None:
-        weight = evalf(self.weight, inds=[ind], **kwargs)
+        weight = evalf(self.weight, inds=[ind], env=env)
         S = samplex(len(population), 5, [index])
         a, b, c, d, e = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx] + d[keyx] - e[keyx])

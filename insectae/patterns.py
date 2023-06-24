@@ -1,12 +1,14 @@
 import functools as ft
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, List, Optional
+from itertools import repeat
 
 import numpy as np
 from numpy.typing import NDArray
 
+# from .executor import BaseExecutor
 from .targets import Target
 from .timer import timing
-from .typing import Individual, Environment
+from .typing import Environment, Individual, FuncKWArgs
 
 
 @timing
@@ -16,23 +18,73 @@ def evaluate(
     keyf: str,
     env: Environment,
     reEvalKey: Optional[str] = None,
+    executor=None,  # FIXME circle dep?
 ) -> None:
-    # TODO this function can be parallelized by MPI for heavy target functions
     target: Target = env["target"]
+    if executor is None:
+        for ind in population:
+            reEval = (reEvalKey is None) or ind[reEvalKey]
+            ind[keyf] = target(x=ind[keyx], f=ind[keyf], reEval=reEval)
+        return
+
+    # find which individuals need to be evaluated
+    to_evaluate: List[Individual] = []
+    to_skip: List[Individual] = []
     for ind in population:
         reEval = (reEvalKey is None) or ind[reEvalKey]
-        ind[keyf] = target(x=ind[keyx], f=ind[keyf], reEval=reEval)
+        if reEval:
+            to_evaluate.append(ind)
+        else:
+            to_skip.append(ind)
+    # enqueue jobs
+    results = executor.starmap(
+        target.get_func(),
+        ((ind[keyx],) for ind in to_evaluate),
+    )
+    # update metrics for non-evaluated ones
+    for ind in to_skip:
+        target.update(x=ind[keyx], f=ind[keyf], reEval=False)
+    # update metrics with results
+    for ind, new_f in zip(to_evaluate, results):
+        ind[keyf] = new_f
+        target.update(x=ind[keyx], f=new_f, reEval=True)
+
+
+def _call_wrap(op: Callable[..., None], ind: Individual, fnkwargs: FuncKWArgs):
+    # with map/starmap interface we only able to send positional arguments,
+    # so passing kwargs as positional argument and then unpacking it
+    op(ind, **fnkwargs)
+    return ind
 
 
 @timing
-def foreach(population: List[Individual], op: Callable[..., None], **opkwargs) -> None:
-    for ind in population:  # TODO parallel loop
-        op(ind, **opkwargs)
+def foreach(
+    population: List[Individual],
+    op: Callable[..., None],
+    fnkwargs: FuncKWArgs,
+    executor=None,
+) -> None:
+    for ind in population:
+        op(ind, **fnkwargs)
+    # if executor is None:
+    #     for ind in population:
+    #         op(ind, **fnkwargs)
+    #     return
+    # # TODO ensure that fnkwargs is sent once per worker?
+    # # FIXME: doesn't work properly for multiprocessing/mpi?
+    # population[:] = executor.starmap(
+    #     _call_wrap,
+    #     zip(repeat(op), population, repeat(fnkwargs))
+    # )
 
 
 @timing
 def neighbors(
-    population: List[Individual], op: Callable[..., None], permutation: List[int], **opkwargs
+    population: List[Individual],
+    op: Callable[..., None],
+    permutation: List[int],
+    executor=None,
+    **opkwargs
 ) -> None:
     for i in range(len(permutation) // 2):  # TODO parallel loop
         inds_pair = population[permutation[2 * i]], population[permutation[2 * i + 1]]
@@ -44,6 +96,7 @@ def pairs(
     population1: List[Individual],
     population2: List[Individual],
     op: Callable[..., None],
+    executor=None,
     **opkwargs
 ) -> None:
     for inds_pair in zip(population1, population2):  # TODO parallel loop
@@ -55,6 +108,7 @@ def pop2ind(
     population1: List[Individual],
     population2: List[Individual],
     op: Callable[..., None],
+    executor=None,
     **opkwargs
 ) -> None:
     for idx in range(len(population1)):  # parallel loop
@@ -70,6 +124,7 @@ def reducePop(
     op: Callable[[Any, Any], Any],
     post: Callable[[Any], Any],
     initVal: Any = None,
+    executor=None,
 ) -> Any:
     if initVal is not None:
         return post(ft.reduce(op, map(extract, population), initVal))
@@ -88,6 +143,7 @@ def signals(
     keyx: str,
     keys: str,
     env: Environment,
+    executor=None,
 ) -> None:
     n = len(population)
     D = np.zeros((n, n))
@@ -98,5 +154,5 @@ def signals(
         ind = population[i]
         S = np.zeros(n)
         for j in range(n):
-            S[j] = shape(D[i][j], inds=[population[i], population[j]], **env)
+            S[j] = shape(D[i][j], inds=[population[i], population[j]], env=env)
         ind[keys] = reduce(S)

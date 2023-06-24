@@ -5,16 +5,16 @@ from typing import Any, Callable, List, Union, TypeVar
 import numpy as np
 
 from .patterns import neighbors, pairs
-from .typing import Individual, Evaluable
+from .typing import Individual, Evaluable, Environment
 
 # TODO move some to the operators.py or move these here
 
 _T = TypeVar("_T")
 
 
-def evalf(param: Evaluable[_T], **opkwargs) -> _T:
+def evalf(param: Evaluable[_T], inds: List[Individual], env: Environment) -> _T:
     if callable(param):
-        return param(**opkwargs)
+        return param(inds, env)
     return param
 
 
@@ -56,10 +56,12 @@ class ProbOp:
         self.method = method
         self.prob = prob
 
-    def __call__(self, inds: List[Individual], **opkwargs) -> None:
-        prob = evalf(self.prob, inds=inds, **opkwargs)
+    # TODO: ind_or_inds is not good
+    def __call__(self, ind_or_inds: Union[Individual, List[Individual]], **opkwargs) -> None:
+        inds = ind_or_inds if isinstance(ind_or_inds, list) else [ind_or_inds]
+        prob = evalf(self.prob, inds=inds, env=opkwargs["env"])
         if random() < prob:
-            self.method(inds, **opkwargs)
+            self.method(ind_or_inds, **opkwargs)
 
 
 class TimedOp:
@@ -67,9 +69,10 @@ class TimedOp:
         self.method = method
         self.dt = dt
 
-    def __call__(self, inds: List[Individual], time: int, **opkwargs) -> None:
+    def __call__(self, ind_or_inds: Union[Individual, List[Individual]], **opkwargs) -> None:
+        time = opkwargs["env"]["time"]
         if time % self.dt == 0:
-            self.method(inds, time=time, **opkwargs)
+            self.method(ind_or_inds, **opkwargs)
 
 
 class Shuffled:
@@ -79,6 +82,7 @@ class Shuffled:
     def __call__(self, population: List[Individual], **opkwargs) -> None:
         perm = list(range(len(population)))
         np.random.shuffle(perm)
+        # TODO pass executor
         neighbors(population, self.op, perm, **opkwargs)
 
 
@@ -96,6 +100,7 @@ class Selected:
         for i in range(len(population)):
             j = samplex(len(population), 1, [i])[0]
             shadow.append(copy.deepcopy(population[j]))
+        # TODO pass executor
         pairs(population, shadow, self.op, **opkwargs)
 
 

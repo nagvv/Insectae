@@ -3,6 +3,7 @@ from typing import Callable, Dict, List, Optional, Union
 from .goals import Goal, ToMin, getGoal
 from .targets import Target
 from .typing import Individual, Environment
+from .executor import BaseExecutor
 
 
 class Algorithm:
@@ -14,6 +15,7 @@ class Algorithm:
         stop: Callable[[Environment], bool] = lambda x: False,
         opInit: Optional[Callable[..., None]] = None,
         env: Environment = {},
+        executor: BaseExecutor = BaseExecutor()
     ) -> None:
         self.target = target
         self.goal = goal if isinstance(goal, Goal) else getGoal(goal)
@@ -21,6 +23,7 @@ class Algorithm:
         self.popSize = popSize
         self.opInit = opInit if opInit is not None else target.defaultInit()
         self.env = env
+        self.executor = executor
 
         self.population: List[Individual] = []  # FIXME, from argument?
         self.additionalProcedures: Dict[str, List[Callable[..., None]]] = {

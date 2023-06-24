@@ -7,7 +7,6 @@ from numpy.typing import NDArray
 from .alg_base import Algorithm
 from .decorators import RankIt
 from .goals import Goal
-from .patterns import evaluate, foreach, pop2ind
 from .typing import Individual
 
 
@@ -34,8 +33,12 @@ class BeesAlgorithm(Algorithm):
         bee: Individual = {"x": None, "f": None, "_rank": None}
         self.bees = [bee.copy() for i in range(self.beesNum)]
         self.opFly = OpFly(self.opProbs, self.opLocal, self.opGlobal, self.popSize)
-        foreach(self.population, self.opInit, key="x", **self.env)
-        evaluate(self.population, keyx="x", keyf="f", env=self.env)
+        self.executor.foreach(
+            self.population,
+            self.opInit,
+            {"target": self.target, "key": "x", "env": self.env},
+        )
+        self.executor.evaluate(self.population, keyx="x", keyf="f", env=self.env)
 
     @staticmethod
     def updatePlace(
@@ -47,7 +50,7 @@ class BeesAlgorithm(Algorithm):
                 place["x"] = bee["x"].copy()
 
     def runGeneration(self) -> None:
-        pop2ind(
+        self.executor.pop2ind(
             self.bees,
             self.population,
             self.opFly,
@@ -55,8 +58,15 @@ class BeesAlgorithm(Algorithm):
             timingLabel="fly",
             **self.env
         )
-        evaluate(self.bees, keyx="x", keyf="f", timingLabel="evaluate", env=self.env)
-        pop2ind(
+        self.executor.evaluate(
+            self.bees,
+            keyx="x",
+            keyf="f",
+            timingLabel="evaluate",
+            timer=self.env.get("timer"),
+            env=self.env,
+        )
+        self.executor.pop2ind(
             self.population,
             self.bees,
             self.updatePlace,
@@ -77,17 +87,17 @@ class OpFly:
         self.opGlobal = opGlobal
         self.probs = opProbs(psize)
 
-    def __call__(self, bee, places, **kwargs) -> None:
+    def __call__(self, bee, places, target, key, **kwargs) -> None:
         rand_val = random()
         for place in places:
             prob = self.probs[place["_rank"]]
             if rand_val < prob:
                 bee["_rank"] = place["_rank"]
                 if place["_rank"] == len(places) - 1:
-                    self.opGlobal(bee, **kwargs)
+                    self.opGlobal(ind=bee, target=target, key=key, env=kwargs)
                 else:
                     bee["x"] = place["x"].copy()
-                    self.opLocal(bee, **kwargs)
+                    self.opLocal(ind=bee, key=key, env=kwargs)
                 return
             rand_val -= prob
 

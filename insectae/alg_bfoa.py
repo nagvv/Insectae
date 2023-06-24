@@ -7,9 +7,9 @@ from numpy.typing import NDArray
 from .alg_base import Algorithm
 from .common import copyAttribute, evalf, FillAttribute, simpleMove
 from .goals import Goal
-from .patterns import evaluate, foreach, signals
 from .targets import Target
-from .typing import Evaluable, Individual
+from .typing import Evaluable, Individual, Environment
+from .patterns import signals
 
 
 class BacterialForagingAlgorithm(Algorithm):
@@ -35,10 +35,10 @@ class BacterialForagingAlgorithm(Algorithm):
 
     @staticmethod
     def initVel(
-        ind: Individual, vel: Evaluable[float], target: Target, **kwargs
+        ind: Individual, vel: Evaluable[float], target: Target, env: Environment
     ) -> None:
         dim = target.dimension
-        vel = evalf(vel, inds=[ind], **kwargs)
+        vel = evalf(vel, inds=[ind], env=env)
         ind["v"] = randomDirectedVector(dim, vel)
 
     @staticmethod
@@ -48,66 +48,136 @@ class BacterialForagingAlgorithm(Algorithm):
         probRotate: Evaluable[Tuple[float, float]],
         target: Target,
         goal: Goal,
-        **kwargs
+        env: Environment,
     ) -> None:
-        prob = evalf(probRotate, inds=[ind], **kwargs)
+        prob = evalf(probRotate, inds=[ind], env=env)
         new_is_better = goal.isBetter(ind["fNew"], ind["f"])
         r = random()
         if new_is_better and r < prob[0] or not new_is_better and r < prob[1]:
-            vel = evalf(vel, inds=[ind], **kwargs)
+            vel = evalf(vel, inds=[ind], env=env)
             dim = target.dimension
             ind["v"] = randomDirectedVector(dim, vel)
 
     @staticmethod
-    def updateF(ind: Individual, gamma: Evaluable[float], **kwargs) -> None:
-        gamma = evalf(gamma, inds=[ind], **kwargs)
+    def updateF(ind: Individual, gamma: Evaluable[float], env: Environment) -> None:
+        gamma = evalf(gamma, inds=[ind], env=env)
         ind["f"] = ind["fNew"]
         ind["fTotal"] = (gamma * ind["fTotal"] + ind["fNew"]) / (gamma + 1)
 
     def start(self) -> None:
         super().init_attributes("vel gamma probRotate", "&x *f fNew fs fTotal v")
-        foreach(self.population, self.opInit, key="x", **self.env)
-        evaluate(self.population, keyx="x", keyf="f", env=self.env)
-        foreach(self.population, self.initVel, **self.env)
-        foreach(self.population, copyAttribute, keyFrom="f", keyTo="fTotal")
-        foreach(self.population, FillAttribute(0.0), key="fs", **self.env)
+        self.executor.foreach(
+            self.population,
+            self.opInit,
+            {
+                "target": self.target,
+                "key": "x",
+                "env": self.env,
+            }
+        )
+        self.executor.evaluate(self.population, keyx="x", keyf="f", env=self.env)
+        self.executor.foreach(
+            self.population,
+            self.initVel,
+            {
+                "vel": self.vel,
+                "target": self.target,
+                "env": self.env,
+            },
+        )
+        self.executor.foreach(
+            self.population,
+            copyAttribute,
+            {
+                "keyFrom": "f",
+                "keyTo": "fTotal",
+            }
+        )
+        self.executor.foreach(
+            self.population,
+            FillAttribute(0.0),
+            {
+                "key": "fs",
+                "env": self.env,
+            }
+        )
 
     def runGeneration(self) -> None:
-        foreach(
+        timer = self.env.get("timer")
+        self.executor.foreach(
             self.population,
             simpleMove,
-            keyx="x",
-            keyv="v",
-            dt=1.0,
-            timingLabel="move"
+            {
+                "keyx": "x",
+                "keyv": "v",
+                "dt": 1.0,
+            },
+            timingLabel="move",
+            timer=timer,
         )
-        evaluate(
-            self.population, keyx="x", keyf="fNew", timingLabel="evaluate", env=self.env
+        self.executor.evaluate(
+            self.population, keyx="x", keyf="fNew", timingLabel="evaluate", timer=timer, env=self.env
         )
         self.opSignals(
             self.population,
             keyx="x",
             keys="fs",
             timingLabel="signals",
-            **self.env
+            timer=timer,
+            env=self.env
         )
-        foreach(
+        self.executor.foreach(
             self.population,
             simpleMove,
-            keyx="fNew",
-            keyv="fs",
-            dt=self.mu,
-            timingLabel="newf"
+            {
+                "keyx": "fNew",
+                "keyv": "fs",
+                "dt": self.mu,
+            },
+            timingLabel="newf",
+            timer=timer,
         )
-        foreach(self.population, self.rotate, timingLabel="rotate", **self.env)
-        foreach(self.population, self.updateF, timingLabel="updatef", **self.env)
-        self.opSelect(self.population, key="fTotal", timingLabel="select", **self.env)
-        foreach(
+        self.executor.foreach(
+            self.population,
+            self.rotate,
+            {
+                "vel": self.vel,
+                "probRotate": self.probRotate,
+                "goal": self.goal,
+                "target": self.target,
+                "env": self.env,
+            },
+            timingLabel="rotate",
+            timer=timer,
+        )
+        self.executor.foreach(
+            self.population,
+            self.updateF,
+            {
+                "gamma": self.gamma,
+                "env": self.env,
+            },
+            timingLabel="updatef",
+            timer=timer,
+        )
+        self.opSelect(
+            self.population,
+            key="fTotal",
+            goal=self.goal,
+            env=self.env,
+            timingLabel="select",
+            timer=timer
+        )
+        self.executor.foreach(
             self.population,
             self.opDisperse,
-            key="x",
+            {
+                "key": "x",
+                "env": self.env,
+                "target": self.target,
+            },
             timingLabel="disperse",
-            **self.env
+            timer=timer,
         )
 
 
@@ -144,6 +214,7 @@ class CalcSignals:
         self.metrics = metrics
 
     def __call__(self, population: List[Individual], keyx: str, keys: str, **kwargs) -> None:
+        # TODO pass executor
         signals(
             population=population,
             metrics=self.metrics,
@@ -151,7 +222,7 @@ class CalcSignals:
             reduce=self.reduce,
             keyx=keyx,
             keys=keys,
-            env=kwargs,
+            **kwargs
         )
 
 
@@ -163,7 +234,7 @@ class ShapeClustering:
         self.d = d
         self.goal = 1 if goal == "min" else -1
 
-    def __call__(self, x: float, **kwargs) -> float:
-        d = evalf(self.d, **kwargs)
+    def __call__(self, x: float, inds: List[Individual], env: Environment) -> float:
+        d = evalf(self.d, inds=inds, env=env)
         x2 = (x / d) ** 2
         return self.goal * (2 * np.exp(-x2) - 3 * np.exp(-4 * x2))

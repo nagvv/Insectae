@@ -1,8 +1,8 @@
 from random import random, randrange
-from typing import Tuple
+from typing import Tuple, List
 import copy
 
-from .typing import Individual, Evaluable
+from .typing import Individual, Evaluable, Environment
 from .common import evalf
 from .targets import Target
 from .goals import Goal
@@ -14,8 +14,8 @@ class ExpCool:
         self.q = q
         self.gen = 0
 
-    def __call__(self, **kwargs) -> float:
-        gen = kwargs['time']
+    def __call__(self, _: List[Individual], env: Environment) -> float:
+        gen = env["time"]
         if gen > self.gen:
             self.gen = gen
             self.x *= self.q
@@ -29,11 +29,11 @@ class HypCool:
         self.deg = deg
         self.gen = 0
 
-    def __call__(self, **kwargs) -> float:
-        gen = kwargs['time']
+    def __call__(self, _: List[Individual], env: Environment) -> float:
+        gen = env["time"]
         if gen > self.gen:
             self.gen = gen
-            self.x = self.x0 / gen ** self.deg
+            self.x = self.x0 / gen**self.deg
         return self.x
 
 
@@ -41,8 +41,8 @@ class RealMutation:
     def __init__(self, delta: Evaluable[float]) -> None:
         self.delta = delta
 
-    def __call__(self, ind: Individual, key: str, **kwargs) -> None:
-        delta = evalf(self.delta, inds=[ind], **kwargs)
+    def __call__(self, ind: Individual, key: str, env: Environment) -> None:
+        delta = evalf(self.delta, inds=[ind], env=env)
         dim = len(ind[key])
         for pos in range(dim):
             ind[key][pos] += delta * (1 - 2 * random())
@@ -52,8 +52,8 @@ class BinaryMutation:
     def __init__(self, prob: Evaluable[float]) -> None:
         self.prob = prob
 
-    def __call__(self, ind: Individual, key: str, **kwargs) -> None:
-        prob = evalf(self.prob, inds=[ind], **kwargs)
+    def __call__(self, ind: Individual, key: str, env: Environment) -> None:
+        prob = evalf(self.prob, inds=[ind], env=env)
         dim = len(ind[key])
         for pos in range(dim):
             if random() < prob:
@@ -64,9 +64,9 @@ class Tournament:
     def __init__(self, pwin: Evaluable[float]) -> None:
         self.pwin = pwin
 
-    def __call__(self, pair, key: str, twoway: bool, goal: Goal, **kwargs):
+    def __call__(self, pair, key: str, twoway: bool, goal: Goal, env: Environment):
         ind1, ind2 = pair
-        pwin = evalf(self.pwin, inds=[ind1, ind2], **kwargs)
+        pwin = evalf(self.pwin, inds=[ind1, ind2], env=env)
         A = goal.isBetter(ind1[key], ind2[key])
         B = random() < pwin
         if A != B:  # xor
@@ -85,10 +85,10 @@ class UniformCrossover:
         key: str,
         target: Target,
         twoway: bool,
-        **kwargs
+        env: Environment,
     ) -> None:
         ind1, ind2 = pair
-        pswap = evalf(self.pswap, inds=[ind1, ind2], **kwargs)
+        pswap = evalf(self.pswap, inds=[ind1, ind2], env=env)
         dim = target.dimension
         for pos in range(dim):
             if random() < pswap:
@@ -108,7 +108,7 @@ class SinglePointCrossover:
         key: str,
         target: Target,
         twoway: bool,
-        **kwargs
+        env: Environment,
     ) -> None:
         ind1, ind2 = pair
         dim = target.dimension
@@ -130,7 +130,7 @@ class DoublePointCrossover:
         key: str,
         target: Target,
         twoway: bool,
-        **kwargs
+        env: Environment,
     ) -> None:
         ind1, ind2 = pair
         dim = target.dimension
@@ -141,5 +141,3 @@ class DoublePointCrossover:
                 ind1[key][pos], ind2[key][pos] = ind2[key][pos], ind1[key][pos]
             else:
                 ind1[key][pos] = ind2[key][pos]
-
-

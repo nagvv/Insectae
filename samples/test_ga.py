@@ -47,9 +47,9 @@ class ExpRanks:
         self.a = a
         self.b = b
 
-    def __call__(self, **xt):
-        r = xt["inds"][0]["_rank"]
-        ps = xt["popSize"]
+    def __call__(self, inds, env):
+        r = inds[0]["_rank"]
+        ps = env["popSize"]
         return self.a * (self.b / self.a) ** (r / (ps - 1))
 
 
@@ -59,10 +59,13 @@ class ExpRanks:
 # ga.opMutate = ins.RealMutation(delta=ins.HypCool(0.1, 0.25))
 # ga.opMutate = ins.BinaryMutation(prob=ins.ExpCool(0.1, 0.99))
 
-# ins.decorate(ga, [ins.RankIt()])
+ins.decorate(ga, [ins.RankIt()])
 
-ins.decorate(ga, [ins.AddElite(5), ins.TimeIt(ins.Timer(metrics)), ins.RankIt()])
+# ins.decorate(ga, [ins.AddElite(5), ins.TimeIt(ins.Timer(metrics)), ins.RankIt()])
 # ins.decorate(ga, ins.AddElite(0.25))
+
+# tm = ins.Timer(metrics=metrics)
+# ins.decorate(ga, [ins.TimeIt(tm)])
 
 ga.run()
 

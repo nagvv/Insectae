@@ -5,9 +5,8 @@ import numpy as np
 from .alg_base import Algorithm
 from .common import FillAttribute, copyAttribute, simpleMove
 from .goals import Goal
-from .patterns import evaluate, foreach, pop2ind
 from .targets import Target
-from .typing import Individual
+from .typing import Environment, Individual
 
 
 class FireflyAlgorithm(Algorithm):
@@ -18,7 +17,7 @@ class FireflyAlgorithm(Algorithm):
         gamma: float,  # light absorption coefficient
         theta: float,  # randomness reduction factor
         alphabest: Optional[float] = None,  # randomization coefficient for best
-        opLimitVel: Callable[..., None] = lambda ind, **kwargs: None,
+        opLimitVel: Callable[..., None] = None,
         **kwargs
     ) -> None:
         self.opLimitVel = opLimitVel
@@ -35,19 +34,21 @@ class FireflyAlgorithm(Algorithm):
         )
         if self.env["alphabest"] is None:
             self.env["alphabest"] = self.env["alpha"]
-        foreach(self.population, self.opInit, key="x", **self.env)
-        evaluate(self.population, keyx="x", keyf="val", env=self.env)
-        foreach(
+        self.executor.foreach(
+            self.population,
+            self.opInit,
+            {"target": self.target, "key": "x", "env": self.env},
+        )
+        self.executor.evaluate(self.population, keyx="x", keyf="val", env=self.env)
+        self.executor.foreach(
             self.population,
             FillAttribute(np.zeros((self.popSize, 1 + self.target.dimension))),
-            key="neighbors",
-            **self.env
+            {"key": "neighbors", "env": self.env},
         )
-        foreach(
+        self.executor.foreach(
             self.population,
             FillAttribute(np.zeros(self.target.dimension)),
-            key="vel",
-            **self.env
+            {"key": "vel", "env": self.env},
         )
 
     def op_p2i(
@@ -66,7 +67,7 @@ class FireflyAlgorithm(Algorithm):
         alphabest: float,
         target: Target,
         goal: Goal,
-        **kwargs
+        env: Environment,
     ) -> None:
         rand = np.random.default_rng()
         tval = ind["val"]
@@ -94,33 +95,58 @@ class FireflyAlgorithm(Algorithm):
         assert isinstance(self.alphabest, float)
         self.alpha *= self.theta
         self.alphabest *= self.theta
-        pop2ind(
+        timer = self.env.get("timer")
+        self.executor.pop2ind(
             self.population,
             self.population,
             self.op_p2i,
             timingLabel="op_p2i",
             **self.env
         )
-        foreach(self.population, self.updateVel, timingLabel="updatevel", **self.env)
-        foreach(
+        self.executor.foreach(
             self.population,
-            self.opLimitVel,
-            key="vel",
-            timingLabel="limitvel",
-            **self.env
+            self.updateVel,
+            {
+                "alpha": self.alpha,
+                "betamin": self.betamin,
+                "gamma": self.gamma,
+                "alphabest": self.alphabest,
+                "target": self.target,
+                "goal": self.goal,
+                "env": self.env,
+            },
+            timingLabel="updatevel",
+            timer=timer,
         )
-        foreach(
+        if self.opLimitVel is not None:
+            self.executor.foreach(
+                self.population,
+                self.opLimitVel,
+                {
+                    "key": "vel",
+                    "env": self.env,
+                },
+                timingLabel="limitvel",
+                timer=timer,
+            )
+        self.executor.foreach(
             self.population,
             simpleMove,
-            keyx="x",
-            keyv="vel",
-            dt=1.0,
+            {
+                "keyx": "x",
+                "keyv": "vel",
+                "dt": 1.0,
+            },
             timingLabel="move",
+            timer=timer,
         )
-        foreach(
+        self.executor.foreach(
             self.population,
             copyAttribute,
-            keyFrom="tval",
-            keyTo="val",
+            {
+                "keyFrom": "tval",
+                "keyTo": "val",
+            },
             timingLabel="copytval",
+            timer=timer,
         )

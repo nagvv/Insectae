@@ -26,11 +26,11 @@ class Timer:
 
 
 def timing(target_func: Callable) -> Callable:
-    def func(*x, timingLabel=None, timer=None, **xt) -> Any:  # FIXME: rename to args, kwargs, annotations
+    def func(*arg, timingLabel: str = None, timer: Timer = None, **kwargs) -> Any:
         doTiming = (timingLabel is not None) and (timer is not None)
         if doTiming:
             timer.startLocal()
-        result = target_func(*x, **xt)
+        result = target_func(*arg, **kwargs)
         if doTiming:
             timer.stopLocal(timingLabel)
         return result

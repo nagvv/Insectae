@@ -1,17 +1,23 @@
-from typing import Any, Callable, Dict, TypedDict, TypeVar, Union
+from typing import Any, Callable, Dict, Mapping, TypeVar, Union, List
 
+# from typing import TYPE_CHECKING
+
+# if TYPE_CHECKING:  # avoid circular dependency issue
+#     from .timer import Timer
+#     from .goals import Goal
+#     from .targets import Target
 
 _T = TypeVar("_T")
-Evaluable = Union[_T, Callable[..., _T]]
 Individual = Dict[str, Any]
-
+FuncKWArgs = Mapping[str, Any]
 Environment = Dict[str, Any]
+Evaluable = Union[_T, Callable[[List[Individual], Environment], _T]]
 
-# TODO, + circular dependency issue
+
 # class Environment(TypedDict, total=False):
-#     timer: Timer
+#     timer: 'Timer'
 #     time: int
-#     goal: Goal
-#     target: Target
+#     goal: 'Goal'
+#     target: 'Target'
 #     solutionValueLabel: str
 #     solutionLabel: str

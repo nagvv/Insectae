@@ -1,7 +1,6 @@
 from typing import Callable
 
 from .alg_base import Algorithm
-from .patterns import evaluate, foreach
 
 
 class GeneticAlgorithm(Algorithm):
@@ -19,15 +18,45 @@ class GeneticAlgorithm(Algorithm):
 
     def start(self) -> None:
         super().init_attributes("", "&x *f")
-        foreach(population=self.population, op=self.opInit, key="x", **self.env)
-        evaluate(population=self.population, keyx="x", keyf="f", env=self.env)
+        self.executor.foreach(
+            self.population,
+            self.opInit,
+            {"target": self.target, "key": "x", "env": self.env},
+        )
+        self.executor.evaluate(
+            population=self.population, keyx="x", keyf="f", env=self.env
+        )
 
     def runGeneration(self) -> None:
-        self.opSelect(self.population, key="f", timingLabel="select", **self.env)
-        self.opCrossover(self.population, key="x", timingLabel="cross", **self.env)
-        foreach(
-            self.population, self.opMutate, key="x", timingLabel="mutate", **self.env
+        timer = self.env.get("timer")
+        self.opSelect(
+            self.population,
+            key="f",
+            goal=self.goal,
+            timingLabel="select",
+            timer=timer,
+            env=self.env,
         )
-        evaluate(
-            self.population, keyx="x", keyf="f", timingLabel="evaluate", env=self.env
+        self.opCrossover(
+            self.population,
+            key="x",
+            target=self.target,
+            timingLabel="cross",
+            timer=timer,
+            env=self.env,
+        )
+        self.executor.foreach(
+            self.population,
+            self.opMutate,
+            {"key": "x", "env": self.env},
+            timingLabel="mutate",
+            timer=timer,
+        )
+        self.executor.evaluate(
+            self.population,
+            keyx="x",
+            keyf="f",
+            timingLabel="evaluate",
+            timer=timer,
+            env=self.env,
         )
