@@ -154,6 +154,7 @@ if __name__ == "__main__":
         partial(ThreadingExecutor, processes=args.numproc),
         partial(MultiprocessingExecutor, processes=args.numproc),
         partial(MPIExecutor, max_workers=args.numproc),
+        partial(DaskExecutor, n_workers=args.numproc, threads_per_worker=1),
     )
     run_tests(
         partial(base_test_func, dur_ms=args.target_dur, payload_func=payload_func),
