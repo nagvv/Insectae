@@ -138,7 +138,7 @@ def reducePop(
 def signals(
     population: List[Individual],
     metrics: Callable[[Any, Any], float],
-    shape: Callable[..., float],
+    shape: Callable[..., Any],
     reduce: Callable[[NDArray[np.float64]], Any],
     keyx: str,
     keys: str,
@@ -152,7 +152,9 @@ def signals(
             D[i, j] = D[j, i] = metrics(population[i][keyx], population[j][keyx])
     for i in range(n):
         ind = population[i]
-        S = np.zeros(n)
-        for j in range(n):
-            S[j] = shape(D[i][j], inds=[population[i], population[j]], env=env)
+        first_val = shape(D[i, 0], inds=[population[i], population[0]], env=env)
+        S = np.zeros((n, *np.shape(first_val)))
+        S[0] = first_val
+        for j in range(1, n):
+            S[j] = shape(D[i, j], inds=[population[i], population[j]], env=env)
         ind[keys] = reduce(S)
