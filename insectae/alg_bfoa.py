@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .alg_base import Algorithm
-from .common import copyAttribute, evalf, FillAttribute, simpleMove
+from .common import copyAttribute, evalf, FillAttribute, simpleMove, l2metrics
 from .goals import Goal
 from .targets import Target
 from .typing import Evaluable, Individual, Environment
@@ -184,10 +184,6 @@ class BacterialForagingAlgorithm(Algorithm):
 def randomDirectedVector(dim: int, length: float) -> NDArray[np.float64]:
     vec = np.random.normal(0.0, 1.0, size=dim)
     return vec * (length / np.linalg.norm(vec))
-
-
-def l2metrics(x: NDArray, y: NDArray) -> float:
-    return float(np.linalg.norm(np.subtract(x, y)))
 
 
 class NoSignals:

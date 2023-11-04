@@ -3,6 +3,7 @@ from random import choices, random
 from typing import Any, Callable, List, Union, TypeVar
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .patterns import neighbors, pairs
 from .typing import Individual, Evaluable, Environment
@@ -106,3 +107,7 @@ class Selected:
 
 def simpleMove(ind: Individual, keyx: str, keyv: str, dt: float) -> None:
     ind[keyx] += dt * ind[keyv]
+
+
+def l2metrics(x: NDArray, y: NDArray) -> float:
+    return float(np.linalg.norm(np.subtract(x, y)))
