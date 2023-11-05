@@ -11,7 +11,7 @@ stop = ins.StopMaxGeneration(1000, metrics=metrics)
 ga = ins.GeneticAlgorithm(
     opSelect=ins.Shuffled(ins.ProbOp(ins.Tournament(pwin=0.9), 0.5)),
     opCrossover=ins.Shuffled(ins.UniformCrossover(pswap=0.3)),
-    opMutate=ins.BinaryMutation(prob=0.01),
+    opMutate=ins.BinaryMutation(prob=0.001),
     target=target,
     stop=stop,
     popSize=60,
@@ -23,8 +23,8 @@ ga = ins.GeneticAlgorithm(
 # x3 = ins.DoublePointCrossover()
 # x = ins.Mixture([x1, x2, x3], [0.2, 0.2, 0.2])
 # ga.opCrossover = ins.Selected(x2)
-# ga.opCrossover = ins.Shuffled(ins.timedOp(x1, 10))
-# ga.opCrossover = ins.Shuffled(ins.probOp(x1, 0.1))
+# ga.opCrossover = ins.Shuffled(ins.TimedOp(x1, 10))
+# ga.opCrossover = ins.Shuffled(ins.ProbOp(x1, 0.1))
 # ga.opCrossover = ins.Shuffled(x)
 
 
