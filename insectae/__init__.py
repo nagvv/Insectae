@@ -6,6 +6,8 @@ from .alg_bees import *
 from .alg_bfoa import *
 from .alg_cso import *
 from .alg_de import *
+from .alg_eda import (PopulationBasedIncrementalLearning,
+                      UnivariateMarginalDistributionAlgorithm)
 from .alg_ffa import *
 from .alg_ga import *
 from .alg_gsa import GravitationalSearchAlgorithm

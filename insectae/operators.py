@@ -1,11 +1,12 @@
-from random import random, randrange
-from typing import Tuple, List
 import copy
+from random import random, randrange
+from typing import Any, List, Tuple
 
-from .typing import Individual, Evaluable, Environment
 from .common import evalf
-from .targets import Target
 from .goals import Goal
+from .targets import Target
+from .timer import timing
+from .typing import Environment, Evaluable, Individual
 
 
 class ExpCool:
@@ -73,6 +74,27 @@ class Tournament:
             ind1.update(copy.deepcopy(ind2))
         elif twoway:
             ind2.update(copy.deepcopy(ind1))
+
+
+class SelectLeft:
+    """
+    Selects the leftmost `ratio` part of a total population as winners.
+    Losers are replaced by winners in a cycle.
+    """
+
+    def __init__(self, ratio: Evaluable[float]) -> None:
+        self._ratio = ratio
+
+    @timing
+    def __call__(
+        self, population: List[Individual], key: str, goal: Goal, env: Environment
+    ) -> Any:
+        count = int(len(population) * evalf(self._ratio, population, env))
+        idx = 0
+        for loser in population[count:]:
+            winner = population[idx]
+            loser.update(copy.deepcopy(winner))
+            idx = (idx + 1) % count
 
 
 class UniformCrossover:

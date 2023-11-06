@@ -1,4 +1,5 @@
-from typing import Any
+from functools import cmp_to_key
+from typing import Any, Callable
 
 
 class Goal:
@@ -19,6 +20,18 @@ class Goal:
 
     def __str__(self) -> str:
         return self._dirStr
+
+    def get_cmp_to_key(self, accessor: Callable[[Any], Any] = lambda x: x):
+        def comparator(obj1: Any, obj2: Any):
+            v1, v2 = accessor(obj1), accessor(obj2)
+            if self.isBetter(v1, v2):
+                return -1
+            elif self.isBetter(v1, v2):
+                return 1
+            else:
+                return 0
+
+        return cmp_to_key(comparator)
 
 
 class ToMax(Goal):

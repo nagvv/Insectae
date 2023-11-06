@@ -1,12 +1,15 @@
 import copy
+from operator import itemgetter
 from random import choices, random
-from typing import Any, Callable, List, Union, TypeVar
+from typing import Any, Callable, List, TypeVar, Union
 
 import numpy as np
 from numpy.typing import NDArray
 
+from .goals import Goal
 from .patterns import neighbors, pairs
-from .typing import Individual, Evaluable, Environment
+from .timer import timing
+from .typing import Environment, Evaluable, Individual
 
 # TODO move some to the operators.py or move these here
 
@@ -103,6 +106,36 @@ class Selected:
             shadow.append(copy.deepcopy(population[j]))
         # TODO pass executor
         pairs(population, shadow, self.op, **opkwargs)
+
+
+class Sorted:
+    def __init__(
+        self, op: Callable[..., None], in_place: bool = True, reverse: bool = False
+    ) -> None:
+        self._op = op
+        self._in_place = in_place
+        self._reverse = reverse
+
+    @timing
+    def __call__(
+        self, population: List[Individual], key: str, goal: Goal, env: Environment
+    ) -> Any:
+        if self._in_place:
+            population.sort(
+                key=goal.get_cmp_to_key(itemgetter(key)), reverse=self._reverse
+            )
+            self._op(population, key, goal, env)
+        else:
+            self._op(
+                sorted(
+                    population,
+                    key=goal.get_cmp_to_key(itemgetter(key)),
+                    reverse=self._reverse,
+                ),
+                key,
+                goal,
+                env,
+            )
 
 
 def simpleMove(ind: Individual, keyx: str, keyv: str, dt: float) -> None:
