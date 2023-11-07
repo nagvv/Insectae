@@ -73,7 +73,7 @@ class RealTarget(Target):
         self.bounds = bounds
 
     def defaultInit(self) -> Callable[..., None]:
-        return RandomRealVector()
+        return RandomRealVector(self.bounds)
 
 
 class RandomRealVector:
