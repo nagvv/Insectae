@@ -1,8 +1,8 @@
 from math import exp
 from operator import add
-from random import random
 from sys import float_info
 from typing import List
+from functools import partial
 
 import numpy as np
 from numpy.typing import NDArray
@@ -68,13 +68,13 @@ class GravitationalSearchAlgorithm(Algorithm):
         return mul * diff / (dist + float_info.epsilon)
 
     @staticmethod
-    def reduce_force(forces: NDArray):
+    def reduce_force(forces: NDArray, rng: np.random.Generator):
         rnd_shape = (forces.shape[0], *(1,) * (forces.ndim - 1))
-        return np.sum(forces * np.random.uniform(size=rnd_shape), axis=0)
+        return np.sum(forces * rng.uniform(size=rnd_shape), axis=0)
 
     @staticmethod
-    def move(x: Individual):
-        vel = random() * x["v"] + x["F"] / (x["M"] + float_info.epsilon)
+    def move(x: Individual, rng: np.random.Generator):
+        vel = rng.random() * x["v"] + x["F"] / (x["M"] + float_info.epsilon)
         x["x"] += vel
         x["v"] = vel
 
@@ -121,7 +121,7 @@ class GravitationalSearchAlgorithm(Algorithm):
             population=self.population,
             metrics=l2metrics,
             shape=self.compute_force,
-            reduce=self.reduce_force,
+            reduce=partial(self.reduce_force, rng=self.rng),
             keyx="x",
             keys="F",
             env=self.env,
@@ -131,7 +131,7 @@ class GravitationalSearchAlgorithm(Algorithm):
         self.executor.foreach(
             population=self.population,
             op=self.move,
-            fnkwargs={},
+            fnkwargs={"rng": self.rng},
             timingLabel="foreach(move)",
             timer=timer,
         )

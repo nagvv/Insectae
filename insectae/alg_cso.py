@@ -42,7 +42,7 @@ class CompetitiveSwarmOptimizer(Algorithm):
         else:
             winner, loser = ind2, ind1
         winner["reEval"], loser["reEval"] = False, True
-        rnd = np.random.rand(3, dim)
+        rnd = env["rng"].random(size=(3, dim))
         loser["v"] = np.multiply(rnd[0], loser["v"])
         loser["v"] += np.multiply(rnd[1], winner["x"] - loser["x"])
         loser["v"] += np.multiply(rnd[2], phi * (x - loser["x"]))
@@ -60,7 +60,7 @@ class CompetitiveSwarmOptimizer(Algorithm):
         self.executor.foreach(
             self.population,
             RandomRealVector((-vel, vel)),
-            {"target": self.target, "key": "v"},
+            {"target": self.target, "key": "v", "env": self.env},
         )
 
     def runGeneration(self) -> None:

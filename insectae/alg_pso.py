@@ -1,4 +1,3 @@
-from random import random
 from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
@@ -62,7 +61,7 @@ class ParticleSwarmOptimization(Algorithm):
         self.executor.foreach(
             self.population,
             RandomRealVector((-vel, vel)),
-            {"target": self.target, "key": "v"},
+            {"target": self.target, "key": "v", "env": self.env},
         )
 
     def runGeneration(self) -> None:
@@ -132,8 +131,9 @@ class RandomAlphaBeta:
         self.beta = beta
 
     def __call__(self, inds: List[Individual], env: Environment) -> Tuple[float, float]:
-        a = random() * self.alpha
-        b = random() * self.beta
+        rng = env["rng"]
+        a = rng.random() * self.alpha
+        b = rng.random() * self.beta
         return a, b
 
 
@@ -142,7 +142,7 @@ class LinkedAlphaBeta:
         self.total = total
 
     def __call__(self, inds: List[Individual], env: Environment) -> Tuple[float, float]:
-        alpha = random() * self.total
+        alpha = env["rng"].random() * self.total
         beta = self.total - alpha
         return alpha, beta
 

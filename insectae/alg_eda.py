@@ -4,7 +4,7 @@ from operator import itemgetter
 from numpy.typing import NDArray
 
 from .alg_base import Algorithm
-from .typing import Individual, Evaluable
+from .typing import Individual, Evaluable, Environment
 from .targets import BinaryTarget
 from .common import evalf
 
@@ -31,8 +31,8 @@ class UnivariateMarginalDistributionAlgorithm(Algorithm):
         )
 
     @staticmethod
-    def generate(ind: Individual, probs: NDArray):
-        gen = np.random.uniform(size=probs.shape)
+    def generate(ind: Individual, probs: NDArray, env: Environment):
+        gen = env["rng"].uniform(size=probs.shape)
         ind["x"] = (gen < probs).astype(int)
 
     def runGeneration(self) -> None:
@@ -56,7 +56,7 @@ class UnivariateMarginalDistributionAlgorithm(Algorithm):
         self.executor.foreach(
             self.population,
             self.generate,
-            {"probs": probs},
+            {"probs": probs, "env": self.env},
             timingLabel="generate",
             timer=timer,
         )
@@ -103,8 +103,8 @@ class PopulationBasedIncrementalLearning(Algorithm):
         self.env["p"] = np.repeat(0.5, repeats=self.target.dimension)
 
     @staticmethod
-    def generate(ind: Individual, probs: NDArray):
-        gen = np.random.uniform(size=probs.shape)
+    def generate(ind: Individual, probs: NDArray, env: Environment):
+        gen = env["rng"].uniform(size=probs.shape)
         ind["x"] = (gen < probs).astype(int)
 
     def runGeneration(self) -> None:
@@ -140,7 +140,7 @@ class PopulationBasedIncrementalLearning(Algorithm):
         self.executor.foreach(
             self.population,
             self.generate,
-            {"probs": probs},
+            {"probs": probs, "env": self.env},
             timingLabel="generate",
             timer=timer,
         )

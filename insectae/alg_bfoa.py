@@ -1,4 +1,3 @@
-from random import random
 from typing import Callable, List, Tuple, Union
 
 import numpy as np
@@ -39,7 +38,7 @@ class BacterialForagingAlgorithm(Algorithm):
     ) -> None:
         dim = target.dimension
         vel = evalf(vel, inds=[ind], env=env)
-        ind["v"] = randomDirectedVector(dim, vel)
+        ind["v"] = randomDirectedVector(dim, vel, env["rng"])
 
     @staticmethod
     def rotate(
@@ -52,11 +51,11 @@ class BacterialForagingAlgorithm(Algorithm):
     ) -> None:
         prob = evalf(probRotate, inds=[ind], env=env)
         new_is_better = goal.isBetter(ind["fNew"], ind["f"])
-        r = random()
+        r = env["rng"].random()
         if new_is_better and r < prob[0] or not new_is_better and r < prob[1]:
             vel = evalf(vel, inds=[ind], env=env)
             dim = target.dimension
-            ind["v"] = randomDirectedVector(dim, vel)
+            ind["v"] = randomDirectedVector(dim, vel, env["rng"])
 
     @staticmethod
     def updateF(ind: Individual, gamma: Evaluable[float], env: Environment) -> None:
@@ -181,8 +180,9 @@ class BacterialForagingAlgorithm(Algorithm):
         )
 
 
-def randomDirectedVector(dim: int, length: float) -> NDArray[np.float64]:
-    vec = np.random.normal(0.0, 1.0, size=dim)
+# TODO: make it consistent with other helper functions
+def randomDirectedVector(dim: int, length: float, rng: np.random.Generator) -> NDArray[np.float64]:
+    vec = rng.normal(loc=0.0, scale=1.0, size=dim)
     return vec * (length / np.linalg.norm(vec))
 
 

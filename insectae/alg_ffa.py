@@ -69,7 +69,7 @@ class FireflyAlgorithm(Algorithm):
         goal: Goal,
         env: Environment,
     ) -> None:
-        rand = np.random.default_rng()
+        rng = env["rng"]
         tval = ind["val"]
         tx = ind["x"].copy()
         amBest = True
@@ -81,15 +81,15 @@ class FireflyAlgorithm(Algorithm):
                 dist = np.linalg.norm(tx - nbx)
                 tvel = betamin * np.exp(-gamma * (dist**2)) * (
                     nbx - tx
-                ) + rand.uniform(-0.5 * alpha, 0.5 * alpha, tx.shape)
+                ) + rng.uniform(-0.5 * alpha, 0.5 * alpha, tx.shape)
                 tx += tvel
                 tval = target(tx, tval, True)
         if amBest:
-            tx += rand.uniform(-0.5 * alphabest, 0.5 * alphabest, tx.shape)
+            tx += rng.uniform(-0.5 * alphabest, 0.5 * alphabest, tx.shape)
             tval = target(tx, tval, True)
         ind["vel"] = tx - ind["x"]
         ind["tval"] = tval
-        # TODO random greatly slowes execution
+        # FIXME random greatly slowes execution
 
     def runGeneration(self) -> None:
         assert isinstance(self.alphabest, float)

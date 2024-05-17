@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple, Union
 
 import numpy as np
 
@@ -55,10 +55,10 @@ class RandomBinaryVector:
         ind: Individual,
         target: Target,
         key: str,
-        env: Optional[Environment] = None
+        env: Environment
     ) -> None:
         dim = target.dimension
-        ind[key] = np.random.randint(2, size=dim)
+        ind[key] = env["rng"].integers(2, size=dim)
 
 
 class RealTarget(Target):
@@ -91,14 +91,14 @@ class RandomRealVector:
         ind: Individual,
         target: RealTarget,
         key: str,
-        env: Optional[Environment] = None
+        env: Environment
     ) -> None:
         dim = target.dimension
         if self.bounds is not None:
             low, high = self.bounds
         else:
             low, high = target.bounds
-        ind[key] = low + (high - low) * np.random.rand(dim)
+        ind[key] = low + (high - low) * env["rng"].random(dim)
 
 
 class PermutationTarget(Target):
@@ -124,4 +124,4 @@ class RandomPermutation:
     ) -> None:
         dim = target.dimension
         ind[key] = np.array(list(range(dim)))
-        np.random.shuffle(ind[key])
+        env["rng"].shuffle(ind[key])

@@ -1,4 +1,5 @@
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union, Sequence
+from numpy.random import Generator, default_rng
 
 from .goals import Goal, ToMin, getGoal
 from .targets import Target
@@ -15,7 +16,8 @@ class Algorithm:
         stop: Callable[[Environment], bool] = lambda x: False,
         opInit: Optional[Callable[..., None]] = None,
         env: Environment = {},
-        executor: BaseExecutor = BaseExecutor()
+        executor: BaseExecutor = BaseExecutor(),
+        rng_seed: Union[None, int, Sequence[int], Generator] = None
     ) -> None:
         self.target = target
         self.goal = goal if isinstance(goal, Goal) else getGoal(goal)
@@ -24,6 +26,7 @@ class Algorithm:
         self.opInit = opInit if opInit is not None else target.defaultInit()
         self.env = env
         self.executor = executor
+        self.rng = default_rng(rng_seed)
 
         self.population: List[Individual] = []  # FIXME, from argument?
         self.additionalProcedures: Dict[str, List[Callable[..., None]]] = {
@@ -58,8 +61,8 @@ class Algorithm:
 
     def init_attributes(self, envAttrs: str, indAttrs: str) -> None:
         # environment
-        keys = ["target", "goal", "time", "popSize"] + envAttrs.split()
-        self.env = {key: None for key in keys}
+        keys = ["target", "goal", "time", "popSize", "rng"] + envAttrs.split()
+        self.env.update({key: None for key in keys})
         for key in keys:
             if key in self.__dict__:
                 self.env[key] = self.__dict__[key]

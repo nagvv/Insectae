@@ -1,5 +1,4 @@
 import copy
-from random import random, randrange
 from typing import Any, List, Tuple
 
 from .common import evalf
@@ -45,8 +44,9 @@ class RealMutation:
     def __call__(self, ind: Individual, key: str, env: Environment) -> None:
         delta = evalf(self.delta, inds=[ind], env=env)
         dim = len(ind[key])
+        rng = env["rng"]
         for pos in range(dim):
-            ind[key][pos] += delta * (1 - 2 * random())
+            ind[key][pos] += delta * (1 - 2 * rng.random())
 
 
 class BinaryMutation:
@@ -56,8 +56,9 @@ class BinaryMutation:
     def __call__(self, ind: Individual, key: str, env: Environment) -> None:
         prob = evalf(self.prob, inds=[ind], env=env)
         dim = len(ind[key])
+        rng = env["rng"]
         for pos in range(dim):
-            if random() < prob:
+            if rng.random() < prob:
                 ind[key][pos] = 1 - ind[key][pos]
 
 
@@ -69,7 +70,7 @@ class Tournament:
         ind1, ind2 = pair
         pwin = evalf(self.pwin, inds=[ind1, ind2], env=env)
         A = goal.isBetter(ind1[key], ind2[key])
-        B = random() < pwin
+        B = env["rng"].random() < pwin
         if A != B:  # xor
             ind1.update(copy.deepcopy(ind2))
         elif twoway:
@@ -112,8 +113,9 @@ class UniformCrossover:
         ind1, ind2 = pair
         pswap = evalf(self.pswap, inds=[ind1, ind2], env=env)
         dim = target.dimension
+        rng = env["rng"]
         for pos in range(dim):
-            if random() < pswap:
+            if rng.random() < pswap:
                 if twoway:
                     ind1[key][pos], ind2[key][pos] = ind2[key][pos], ind1[key][pos]
                 else:
@@ -134,7 +136,7 @@ class SinglePointCrossover:
     ) -> None:
         ind1, ind2 = pair
         dim = target.dimension
-        cpos = randrange(1, dim)
+        cpos = env["rng"].integers(1, dim)
         for pos in range(cpos, dim):
             if twoway:
                 ind1[key][pos], ind2[key][pos] = ind2[key][pos], ind1[key][pos]
@@ -156,8 +158,8 @@ class DoublePointCrossover:
     ) -> None:
         ind1, ind2 = pair
         dim = target.dimension
-        cpos1 = randrange(1, dim - 1)
-        cpos2 = randrange(cpos1, dim)
+        cpos1 = env["rng"].integers(1, dim - 1)
+        cpos2 = env["rng"].integers(cpos1, dim)
         for pos in range(cpos1, cpos2):
             if twoway:
                 ind1[key][pos], ind2[key][pos] = ind2[key][pos], ind1[key][pos]

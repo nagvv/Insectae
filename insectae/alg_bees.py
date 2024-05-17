@@ -1,4 +1,3 @@
-from random import random
 from typing import Callable, List
 
 import numpy as np
@@ -88,7 +87,7 @@ class OpFly:
         self.probs = opProbs(psize)
 
     def __call__(self, bee, places, target, key, **kwargs) -> None:
-        rand_val = random()
+        rand_val = kwargs["rng"].random()
         for place in places:
             prob = self.probs[place["_rank"]]
             if rand_val < prob:

@@ -93,7 +93,7 @@ class ProbeClassic:
         env: Environment,
     ) -> None:
         weight = evalf(self.weight, inds=[ind], env=env)
-        S = samplex(len(population), 3, [index])
+        S = samplex(len(population), 3, [index], env["rng"])
         a, b, c = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx])
 
@@ -113,7 +113,7 @@ class ProbeBest:
     ) -> None:
         weight = evalf(self.weight, inds=[ind], env=env)
         i = argbestDE(population, keyf, env["goal"])
-        sample = [i] + samplex(len(population), 2, [index, i])
+        sample = [i] + samplex(len(population), 2, [index, i], env["rng"])
         a, b, c = [population[i] for i in sample]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx])
 
@@ -133,7 +133,7 @@ class ProbeCur2Best:
     ) -> None:
         weight = evalf(self.weight, inds=[ind], env=env)
         i = argbestDE(population, keyf, env["goal"])
-        S = [index, i] + samplex(len(population), 2, [index, i])
+        S = [index, i] + samplex(len(population), 2, [index, i], env["rng"])
         cur, a, b, c = [population[i] for i in S]
         ind[keyx] = cur[keyx] + weight * (a[keyx] - cur[keyx] + b[keyx] - c[keyx])
 
@@ -153,7 +153,7 @@ class ProbeBest2:
     ) -> None:
         weight = evalf(self.weight, inds=[ind], env=env)
         i = argbestDE(population, keyf, env["goal"])
-        S = [i] + samplex(len(population), 4, [index, i])
+        S = [i] + samplex(len(population), 4, [index, i], env["rng"])
         a, b, c, d, e = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx] + d[keyx] - e[keyx])
 
@@ -172,6 +172,6 @@ class probeRandom5:
         env: Environment,
     ) -> None:
         weight = evalf(self.weight, inds=[ind], env=env)
-        S = samplex(len(population), 5, [index])
+        S = samplex(len(population), 5, [index], env["rng"])
         a, b, c, d, e = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx] + d[keyx] - e[keyx])

@@ -1,4 +1,3 @@
-from random import random
 from typing import Callable
 
 from numpy import exp
@@ -71,6 +70,6 @@ class SimulatedAnnealing(Algorithm):
     ) -> None:
         theta = evalf(theta, inds=[ind], env=env)
         df = abs(ind["fNew"] - ind["f"])
-        if goal.isBetter(ind["fNew"], ind["f"]) or random() < exp(-df / theta):
+        if goal.isBetter(ind["fNew"], ind["f"]) or env["rng"].random() < exp(-df / theta):
             ind["f"] = ind["fNew"]
             ind["x"] = ind["xNew"].copy()

@@ -1,7 +1,7 @@
 import copy
 from operator import itemgetter
-from random import choices, random
 from typing import Any, Callable, List, TypeVar, Union
+from bisect import bisect
 
 import numpy as np
 from numpy.typing import NDArray
@@ -43,14 +43,55 @@ def copyAttribute(ind: Individual, keyFrom: str, keyTo: str) -> None:
         ind[keyTo] = ind[keyFrom].copy()
 
 
+def weighted_choice(values: List[Any], weights: List[float], rng: np.random.Generator):
+    """
+    Select a random element from `values` with probabilities proportional to `weights`.
+
+    This function is the equivalent of `choices(values, weights=weights)[0]`
+    where `choices` is from `random` module. Which is equivalent to
+    `rng.choice(values, p=weights/sum(weights))`.
+
+    We can't use `choices` because we want to use seeded numpy random number
+    generator, but `choice` from numpy is extremely slow compared to `choices`
+    from `random` module and this function.
+
+    This function assumes that all input parameters are valid and does not validate them.
+
+    Parameters
+    ----------
+    values : List[Any]
+        The list of elements to choose from.
+    weights : List[float]
+        The list of weights corresponding to each element in `values`.
+    rng : np.random.Generator
+        A NumPy random generator instance for generating random numbers.
+    """
+
+    total = 0
+    cum_weights = []
+    for w in weights:
+        total += w
+        cum_weights.append(total)
+    x = rng.random() * total
+    i = bisect(cum_weights, x)
+    return values[i]
+
+
 class Mixture:
     def __init__(self, methods: List[Callable[..., None]], probs: List[float]) -> None:
+        if len(methods) != len(probs):
+            raise ValueError("The lengths of `methods` and `probs` must be the same.")
+        if any(w < 0 for w in probs):
+            raise ValueError("`probs` must be non-negative.")
+        if sum(probs) == 0:
+            raise ValueError("The sum of probs must be greater than zero.")
+
         self.methods = methods + [lambda *args, **kwargs: None]  # append no-op
         self.probs = probs + [1.0 - np.sum(probs)]
 
-    def __call__(self, inds: List[Individual], **opkwargs) -> None:
-        method = choices(self.methods, weights=self.probs)[0]
-        method(inds, **opkwargs)
+    def __call__(self, inds: List[Individual], env: Environment, **opkwargs) -> None:
+        method = weighted_choice(self.methods, self.probs, env["rng"])
+        method(inds, env=env, **opkwargs)
 
 
 class ProbOp:
@@ -61,11 +102,13 @@ class ProbOp:
         self.prob = prob
 
     # TODO: ind_or_inds is not good
-    def __call__(self, ind_or_inds: Union[Individual, List[Individual]], **opkwargs) -> None:
+    def __call__(
+        self, ind_or_inds: Union[Individual, List[Individual]], env: Environment, **opkwargs
+    ) -> None:
         inds = ind_or_inds if isinstance(ind_or_inds, list) else [ind_or_inds]
-        prob = evalf(self.prob, inds=inds, env=opkwargs["env"])
-        if random() < prob:
-            self.method(ind_or_inds, **opkwargs)
+        prob = evalf(self.prob, inds=inds, env=env)
+        if env["rng"].random() < prob:
+            self.method(ind_or_inds, env=env, **opkwargs)
 
 
 class TimedOp:
@@ -83,29 +126,30 @@ class Shuffled:
     def __init__(self, op: Callable[..., None]) -> None:
         self.op = op
 
-    def __call__(self, population: List[Individual], **opkwargs) -> None:
+    def __call__(self, population: List[Individual], env: Environment, **opkwargs) -> None:
         perm = list(range(len(population)))
-        np.random.shuffle(perm)
+        env["rng"].shuffle(perm)
         # TODO pass executor
-        neighbors(population, self.op, perm, **opkwargs)
+        neighbors(population, self.op, perm, env=env, **opkwargs)
 
 
-def samplex(n: int, m: int, exclude: List[int]) -> List[int]:
+def samplex(n: int, m: int, exclude: List[int], rng: np.random.Generator) -> List[int]:
     s = list(set(range(n)) - set(exclude))
-    return list(np.random.choice(s, m, False))
+    return list(rng.choice(s, m, False))
 
 
 class Selected:
     def __init__(self, op: Callable[..., None]) -> None:
         self.op = op
 
-    def __call__(self, population: List[Individual], **opkwargs) -> None:
+    def __call__(self, population: List[Individual], env: Environment, **opkwargs) -> None:
         shadow: List[Individual] = []
+        rng = env["rng"]
         for i in range(len(population)):
-            j = samplex(len(population), 1, [i])[0]
+            j = samplex(len(population), 1, [i], rng)[0]
             shadow.append(copy.deepcopy(population[j]))
         # TODO pass executor
-        pairs(population, shadow, self.op, **opkwargs)
+        pairs(population, shadow, self.op, env=env, **opkwargs)
 
 
 class Sorted:
