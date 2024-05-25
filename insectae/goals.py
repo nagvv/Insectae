@@ -14,9 +14,11 @@ class Goal:
         return self._dirStr
 
     def __eq__(self, other) -> bool:
-        if not isinstance(other, str):
-            return NotImplemented
-        return other == self._dirStr
+        if isinstance(other, str):
+            return other == self._dirStr
+        if isinstance(other, Goal):
+            return other._dirStr == self._dirStr
+        return NotImplemented
 
     def __str__(self) -> str:
         return self._dirStr
