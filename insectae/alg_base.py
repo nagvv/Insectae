@@ -40,8 +40,11 @@ class Algorithm:
     def addProcedure(self, key: str, proc: Callable[..., None]) -> None:
         self.additionalProcedures[key].append(proc)
 
-    def runAdds(self, key: str) -> None:
-        for proc in self.additionalProcedures[key]:
+    def runAdds(self, key: str, reverse: bool = False) -> None:
+        procedures = self.additionalProcedures[key]
+        if reverse:
+            procedures = reversed(procedures)
+        for proc in procedures:
             proc(self.population, self.env)  # FIXME **self.env??
 
     def checkKey(self, key: str) -> str:  # FIXME make internal?
@@ -86,7 +89,7 @@ class Algorithm:
         pass
 
     def exit(self) -> None:
-        self.runAdds("exit")
+        self.runAdds("exit", reverse=True)
 
     def finish(self) -> None:
-        self.runAdds("finish")
+        self.runAdds("finish", reverse=True)
