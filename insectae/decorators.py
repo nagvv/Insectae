@@ -25,16 +25,18 @@ class TimeIt:
         if "timeIt" in alg.decorators:
             return
 
-        def _start(population: List[Individual], env: Environment) -> None:
-            alg.env["timer"] = self._timer
-            self._timer.startGlobal()
-
-        def _finish(population: List[Individual], env: Environment) -> None:
-            self._timer.stopGlobal()
-
-        alg.addProcedure("start", _start)
-        alg.addProcedure("finish", _finish)
+        alg.env["timer"] = self._timer
+        alg.addProcedure("start", self._start)
+        alg.addProcedure("finish", self._finish)
         alg.decorators.append("timeIt")
+
+    @staticmethod
+    def _start(population: List[Individual], env: Environment) -> None:
+        env["timer"].startGlobal()
+
+    @staticmethod
+    def _finish(population: List[Individual], env: Environment) -> None:
+        env["timer"].stopGlobal()
 
 
 class RankIt:
@@ -42,23 +44,25 @@ class RankIt:
         if "rankIt" in alg.decorators:
             return
 
-        def _start(population: List[Individual], env: Environment) -> None:
-            for i, _ in enumerate(population):
-                population[i]["_rank"] = i
-
-        def _enter(population: List[Individual], env: Environment) -> None:
-            solutionValueLabel = env["solutionValueLabel"]
-            ranks = list(map(lambda x: x["_rank"], population))
-            ranks.sort(
-                key=lambda x: population[x][solutionValueLabel],
-                reverse=(env["goal"] == "max"),
-            )
-            for i, _ in enumerate(population):
-                population[ranks[i]]["_rank"] = i
-
-        alg.addProcedure("start", _start)
-        alg.addProcedure("enter", _enter)
+        alg.addProcedure("start", self._start)
+        alg.addProcedure("enter", self._enter)
         alg.decorators.append("rankIt")
+
+    @staticmethod
+    def _start(population: List[Individual], env: Environment) -> None:
+        for i, _ in enumerate(population):
+            population[i]["_rank"] = i
+
+    @staticmethod
+    def _enter(population: List[Individual], env: Environment) -> None:
+        solutionValueLabel = env["solutionValueLabel"]
+        ranks = list(map(lambda x: x["_rank"], population))
+        ranks.sort(
+            key=lambda x: population[x][solutionValueLabel],
+            reverse=(env["goal"] == "max"),
+        )
+        for i, _ in enumerate(population):
+            population[ranks[i]]["_rank"] = i
 
 
 class AddElite:
@@ -82,36 +86,36 @@ class AddElite:
         if "addElite" in alg.decorators:
             return
 
-        def _enter(population: List[Individual], env: Environment) -> None:
-            solutionValueLabel = env["solutionValueLabel"]
-            # TODO use item with changeable key inside env instead of alg
-            setattr(alg, "elite", {})
-            pop_size = len(population)
-            if self._size is None:
-                assert self._ratio is not None
-                self._size = int(self._ratio * pop_size)
-            indexes = list(range(pop_size))
-            goal = env["goal"]
-            for i in range(self._size):
-                for j in range(i + 1, pop_size):
-                    if goal.isBetter(
-                        population[indexes[j]][solutionValueLabel],
-                        population[indexes[i]][solutionValueLabel],
-                    ):
-                        indexes[i], indexes[j] = indexes[j], indexes[i]
-                getattr(alg, "elite")[indexes[i]] = deepcopy(population[indexes[i]])
-
-        def _exit(population: List[dict], env: Environment) -> None:
-            solutionValueLabel = env["solutionValueLabel"]
-            for idx, elite_ind in getattr(alg, "elite").items():
-                if env["goal"].isBetter(
-                    elite_ind[solutionValueLabel], population[idx][solutionValueLabel]
-                ):
-                    population[idx] = deepcopy(elite_ind)
-
-        alg.addProcedure("enter", _enter)
-        alg.addProcedure("exit", _exit)
+        alg.addProcedure("enter", self._enter)
+        alg.addProcedure("exit", self._exit)
         alg.decorators.append("addElite")
+
+    def _enter(self, population: List[Individual], env: Environment) -> None:
+        solutionValueLabel = env["solutionValueLabel"]
+        elite = env["elite"] = {}
+        pop_size = len(population)
+        if self._size is None:
+            assert self._ratio is not None
+            self._size = int(self._ratio * pop_size)
+        indexes = list(range(pop_size))
+        goal = env["goal"]
+        for i in range(self._size):
+            for j in range(i + 1, pop_size):
+                if goal.isBetter(
+                    population[indexes[j]][solutionValueLabel],
+                    population[indexes[i]][solutionValueLabel],
+                ):
+                    indexes[i], indexes[j] = indexes[j], indexes[i]
+            elite[indexes[i]] = deepcopy(population[indexes[i]])
+
+    @staticmethod
+    def _exit(population: List[dict], env: Environment) -> None:
+        solutionValueLabel = env["solutionValueLabel"]
+        for idx, elite_ind in env["elite"].items():
+            if env["goal"].isBetter(
+                elite_ind[solutionValueLabel], population[idx][solutionValueLabel]
+            ):
+                population[idx] = deepcopy(elite_ind)
 
 
 class AddFitnessSharing:
@@ -168,72 +172,8 @@ class AddFitnessSharing:
         if "AddFitnessSharing" in algorithm.decorators:
             return
 
-        def _evaluate(
-            self_executor,
-            population: List[Individual],
-            keyx: str,
-            keyf: str,
-            env: Environment,
-            **kwargs
-        ) -> None:
-            timer = env.get("timer")
-            self_executor.signals(
-                population=population,
-                metrics=self._dist_func,
-                shape=lambda d, **kwargs: self._sharing_function(d),
-                reduce=np.sum,
-                keyx=keyx,
-                keys=self._niche_count_key,
-                env=env,
-                timingLabel="fitness_sharing",
-                timer=timer,
-            )
-            self_executor._fitness_sharing_orig_evaluate(
-                population=population,
-                keyx=keyx,
-                keyf=self._orig_f_key,
-                env=env,
-                **kwargs
-            )
-            self_executor.foreach(
-                population=population,
-                op=self._apply_niching,
-                fnkwargs={"keyf": keyf, "toMax": algorithm.goal == "max"},
-                timingLabel="fitness_sharing",
-                timer=timer,
-            )
-
-        def _start(_: List[Individual], env: Environment) -> None:
-            executor = algorithm.executor
-            executor._fitness_sharing_orig_evaluate = executor.evaluate
-            executor.evaluate = MethodType(_evaluate, executor)
-
-        def _finish(population: List[Individual], env: Environment) -> None:
-            keyf = env["solutionValueLabel"]
-
-            def _save_niched_solution_value(ind: Individual):
-                ind[self._niched_solution_value_key] = ind[keyf]
-
-            executor = algorithm.executor
-            executor.evaluate = executor._fitness_sharing_orig_evaluate
-            del executor._fitness_sharing_orig_evaluate
-            executor.foreach(
-                population=population, op=_save_niched_solution_value, fnkwargs={}
-            )
-            # run evaluate again without fitness sharing to get the actual
-            # fitness values; we can't simply replace them with existing orig
-            # values since after evaluate algorithm can tamper with them
-            executor.evaluate(
-                population=population,
-                keyx=env["solutionLabel"],
-                keyf=keyf,
-                env=env,
-                timingLabel="fitness_sharing",
-                timer=env.get("timer"),
-            )
-
-        algorithm.addProcedure("start", _start)
-        algorithm.addProcedure("finish", _finish)
+        algorithm.addProcedure("start", self._start)
+        algorithm.addProcedure("finish", self._finish)
         algorithm.decorators.append("AddFitnessSharing")
 
     def _sharing_function(self, distance: float) -> float:
@@ -250,6 +190,71 @@ class AddFitnessSharing:
         else:
             f_value *= ind[self._niche_count_key]
         ind[keyf] = f_value
+
+    def _evaluate(
+        self,
+        self_executor,
+        population: List[Individual],
+        keyx: str,
+        keyf: str,
+        env: Environment,
+        **kwargs
+    ) -> None:
+        timer = env.get("timer")
+        self_executor.signals(
+            population=population,
+            metrics=self._dist_func,
+            shape=lambda d, **kwargs: self._sharing_function(d),
+            reduce=np.sum,
+            keyx=keyx,
+            keys=self._niche_count_key,
+            env=env,
+            timingLabel="fitness_sharing",
+            timer=timer,
+        )
+        self_executor._fitness_sharing_orig_evaluate(
+            population=population,
+            keyx=keyx,
+            keyf=self._orig_f_key,
+            env=env,
+            **kwargs
+        )
+        self_executor.foreach(
+            population=population,
+            op=self._apply_niching,
+            fnkwargs={"keyf": keyf, "toMax": env["goal"] == "max"},
+            timingLabel="fitness_sharing",
+            timer=timer,
+        )
+
+    def _start(self, _: List[Individual], env: Environment) -> None:
+        executor = env["executor"]
+        executor._fitness_sharing_orig_evaluate = executor.evaluate
+        executor.evaluate = MethodType(self._evaluate, executor)
+
+    def _finish(self, population: List[Individual], env: Environment) -> None:
+        keyf = env["solutionValueLabel"]
+
+        def _save_niched_solution_value(ind: Individual):
+            ind[self._niched_solution_value_key] = ind[keyf]
+
+        executor = env["executor"]
+        executor.evaluate = executor._fitness_sharing_orig_evaluate
+        del executor._fitness_sharing_orig_evaluate
+        executor.foreach(
+            population=population, op=_save_niched_solution_value, fnkwargs={}
+        )
+        # run evaluate again without fitness sharing to get the actual
+        # fitness values; we can't simply replace them with existing orig
+        # values since after evaluate algorithm can tamper with them
+        executor.evaluate(
+            population=population,
+            keyx=env["solutionLabel"],
+            keyf=keyf,
+            env=env,
+            timingLabel="fitness_sharing",
+            timer=env.get("timer"),
+        )
 
 
 class AddClearing:
@@ -299,73 +304,8 @@ class AddClearing:
             return
 
         self._goal = algorithm.goal.getDir()
-
-        def _evaluate(
-            self_executor,
-            population: List[Individual],
-            keyx: str,
-            keyf: str,
-            env: Environment,
-            **kwargs
-        ) -> None:
-            timer = env.get("timer")
-            self_executor._clearing_orig_evaluate(
-                population=population,
-                keyx=keyx,
-                keyf=self._orig_f_key,
-                env=env,
-                **kwargs
-            )
-            self_executor.signals(
-                population=population,
-                metrics=self._dist_func,
-                shape=self._add_context_to_distances,
-                reduce=self._compute_niche,
-                keyx=keyx,
-                keys=self._is_niche_winner_key,
-                env=env,
-                timingLabel="clearing",
-                timer=timer,
-            )
-            self_executor.foreach(
-                population=population,
-                op=self._apply_niching,
-                fnkwargs={"keyf": keyf, "goal": algorithm.goal},
-                timingLabel="clearing",
-                timer=timer,
-            )
-
-        def _start(_: List[Individual], env: Environment) -> None:
-            executor = algorithm.executor
-            executor._clearing_orig_evaluate = executor.evaluate
-            executor.evaluate = MethodType(_evaluate, executor)
-
-        def _finish(population: List[Individual], env: Environment) -> None:
-            keyf = env["solutionValueLabel"]
-
-            def _save_niched_solution_value(ind: Individual):
-                ind[self._niched_solution_value_key] = ind[keyf]
-
-            executor = algorithm.executor
-            executor.evaluate = executor._clearing_orig_evaluate
-            del executor._clearing_orig_evaluate
-            executor.foreach(
-                population=population, op=_save_niched_solution_value, fnkwargs={}
-            )
-            # run evaluate again without niching to get the actual solution
-            # values; we can't simply replace them with existing orig values
-            # since after evaluate algorithm can tamper with them
-            executor.evaluate(
-                population=population,
-                keyx=env["solutionLabel"],
-                keyf=keyf,
-                env=env,
-                timingLabel="clearing",
-                timer=env.get("timer"),
-            )
-
-        algorithm.addProcedure("start", _start)
-        algorithm.addProcedure("finish", _finish)
+        algorithm.addProcedure("start", self._start)
+        algorithm.addProcedure("finish", self._finish)
         algorithm.decorators.append("AddClearing")
 
     def _add_context_to_distances(
@@ -387,3 +327,68 @@ class AddClearing:
             ind[keyf] = ind[self._orig_f_key]
         else:
             ind[keyf] = np.inf if goal.getDir() == "min" else -np.inf
+
+    def _evaluate(
+        self,
+        self_executor,
+        population: List[Individual],
+        keyx: str,
+        keyf: str,
+        env: Environment,
+        **kwargs
+    ) -> None:
+        timer = env.get("timer")
+        self_executor._clearing_orig_evaluate(
+            population=population,
+            keyx=keyx,
+            keyf=self._orig_f_key,
+            env=env,
+            **kwargs
+        )
+        self_executor.signals(
+            population=population,
+            metrics=self._dist_func,
+            shape=self._add_context_to_distances,
+            reduce=self._compute_niche,
+            keyx=keyx,
+            keys=self._is_niche_winner_key,
+            env=env,
+            timingLabel="clearing",
+            timer=timer,
+        )
+        self_executor.foreach(
+            population=population,
+            op=self._apply_niching,
+            fnkwargs={"keyf": keyf, "goal": env["goal"]},
+            timingLabel="clearing",
+            timer=timer,
+        )
+
+    def _start(self, _: List[Individual], env: Environment) -> None:
+        executor = env["executor"]
+        executor._clearing_orig_evaluate = executor.evaluate
+        executor.evaluate = MethodType(self._evaluate, executor)
+
+    def _finish(self, population: List[Individual], env: Environment) -> None:
+        keyf = env["solutionValueLabel"]
+
+        def _save_niched_solution_value(ind: Individual):
+            ind[self._niched_solution_value_key] = ind[keyf]
+
+        executor = env["executor"]
+        executor.evaluate = executor._clearing_orig_evaluate
+        del executor._clearing_orig_evaluate
+        executor.foreach(
+            population=population, op=_save_niched_solution_value, fnkwargs={}
+        )
+        # run evaluate again without niching to get the actual solution
+        # values; we can't simply replace them with existing orig values
+        # since after evaluate algorithm can tamper with them
+        executor.evaluate(
+            population=population,
+            keyx=env["solutionLabel"],
+            keyf=keyf,
+            env=env,
+            timingLabel="clearing",
+            timer=env.get("timer"),
+        )

@@ -86,8 +86,12 @@ class Mixture:
         if sum(probs) == 0:
             raise ValueError("The sum of probs must be greater than zero.")
 
-        self.methods = methods + [lambda *args, **kwargs: None]  # append no-op
+        self.methods = methods + [self._noop]  # append no-op
         self.probs = probs + [1.0 - np.sum(probs)]
+
+    @staticmethod
+    def _noop(*args, **kwargs):
+        pass
 
     def __call__(self, inds: List[Individual], env: Environment, **opkwargs) -> None:
         method = weighted_choice(self.methods, self.probs, env["rng"])

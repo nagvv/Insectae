@@ -64,7 +64,7 @@ class Algorithm:
 
     def init_attributes(self, envAttrs: str, indAttrs: str) -> None:
         # environment
-        keys = ["target", "goal", "time", "popSize", "rng"] + envAttrs.split()
+        keys = ["target", "goal", "time", "popSize", "rng", "executor"] + envAttrs.split()
         self.env.update({key: None for key in keys})
         for key in keys:
             if key in self.__dict__:
