@@ -45,7 +45,7 @@ class GravitationalSearchAlgorithm(Algorithm):
         self.executor.foreach(
             self.population,
             RandomRealVector((-vel, vel)),
-            {"target": self.target, "key": "v"},
+            {"target": self.target, "key": "v", "env": self.env},
         )
 
     def update_G(self):
