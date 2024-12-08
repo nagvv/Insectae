@@ -15,7 +15,7 @@ class Algorithm:
         goal: Union[Goal, str] = ToMin(),
         stop: Callable[[Environment], bool] = lambda x: False,
         opInit: Optional[Callable[..., None]] = None,
-        env: Environment = {},
+        env: Optional[Environment] = None,
         executor: BaseExecutor = BaseExecutor(),
         rng_seed: Union[None, int, Sequence[int], Generator] = None
     ) -> None:
@@ -24,7 +24,7 @@ class Algorithm:
         self.stop = stop
         self.popSize = popSize
         self.opInit = opInit if opInit is not None else target.defaultInit()
-        self.env = env
+        self.env = env if env is not None else {}
         self.executor = executor
         self.rng = default_rng(rng_seed)
 
