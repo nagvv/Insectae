@@ -152,9 +152,9 @@ def signals(
             D[i, j] = D[j, i] = metrics(population[i][keyx], population[j][keyx])
     for i in range(n):
         ind = population[i]
-        first_val = shape(D[i, 0], inds=[population[i], population[0]], env=env)
+        first_val = shape(D[i, 0], inds=[ind, population[0]], env=env)
         S = np.zeros((n, *np.shape(first_val)))
         S[0] = first_val
         for j in range(1, n):
-            S[j] = shape(D[i, j], inds=[population[i], population[j]], env=env)
+            S[j] = shape(D[i, j], inds=[ind, population[j]], env=env)
         ind[keys] = reduce(S)
