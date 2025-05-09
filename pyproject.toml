@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "insectae"
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = ["numpy", "matplotlib", "mpi4py", "ray"]
+
+[project.optional-dependencies]
+
+[tool.setuptools]
+packages = ["insectae", "insectae.parallel"]
