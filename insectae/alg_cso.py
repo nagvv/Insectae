@@ -34,7 +34,7 @@ class CompetitiveSwarmOptimizer(Algorithm):
     ) -> None:
         ind1, ind2 = pair
         dim = target.dimension
-        phi = evalf(socialFactor, inds=[ind1, ind2], env=env)
+        phi = evalf(socialFactor, env["time"])
         x = env["x"]
 
         if goal.isBetter(ind1["f"], ind2["f"]):

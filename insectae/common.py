@@ -16,9 +16,9 @@ from .typing import Environment, Evaluable, Individual
 _T = TypeVar("_T")
 
 
-def evalf(param: Evaluable[_T], inds: List[Individual], env: Environment) -> _T:
+def evalf(param: Evaluable[_T], time: int) -> _T:
     if callable(param):
-        return param(inds, env)
+        return param(time)
     return param
 
 
@@ -109,8 +109,7 @@ class ProbOp:
     def __call__(
         self, ind_or_inds: Union[Individual, List[Individual]], env: Environment, **opkwargs
     ) -> None:
-        inds = ind_or_inds if isinstance(ind_or_inds, list) else [ind_or_inds]
-        prob = evalf(self.prob, inds=inds, env=env)
+        prob = evalf(self.prob, env["time"])
         if env["rng"].random() < prob:
             self.method(ind_or_inds, env=env, **opkwargs)
 

@@ -14,8 +14,8 @@ class ExpCool:
         self.q = q
         self.gen = 0
 
-    def __call__(self, _: List[Individual], env: Environment) -> float:
-        gen = env["time"]
+    def __call__(self, time: int) -> float:
+        gen = time
         if gen > self.gen:
             self.gen = gen
             self.x *= self.q
@@ -29,8 +29,8 @@ class HypCool:
         self.deg = deg
         self.gen = 0
 
-    def __call__(self, _: List[Individual], env: Environment) -> float:
-        gen = env["time"]
+    def __call__(self, time: int) -> float:
+        gen = time
         if gen > self.gen:
             self.gen = gen
             self.x = self.x0 / gen**self.deg
@@ -42,7 +42,7 @@ class RealMutation:
         self.delta = delta
 
     def __call__(self, ind: Individual, key: str, env: Environment) -> None:
-        delta = evalf(self.delta, inds=[ind], env=env)
+        delta = evalf(self.delta, env["time"])
         dim = len(ind[key])
         rng = env["rng"]
         for pos in range(dim):
@@ -54,7 +54,7 @@ class BinaryMutation:
         self.prob = prob
 
     def __call__(self, ind: Individual, key: str, env: Environment) -> None:
-        prob = evalf(self.prob, inds=[ind], env=env)
+        prob = evalf(self.prob, env["time"])
         dim = len(ind[key])
         rng = env["rng"]
         for pos in range(dim):
@@ -68,7 +68,7 @@ class Tournament:
 
     def __call__(self, pair, key: str, twoway: bool, goal: Goal, env: Environment):
         ind1, ind2 = pair
-        pwin = evalf(self.pwin, inds=[ind1, ind2], env=env)
+        pwin = evalf(self.pwin, env["time"])
         A = goal.isBetter(ind1[key], ind2[key])
         B = env["rng"].random() < pwin
         if A != B:  # xor
@@ -90,7 +90,7 @@ class SelectLeft:
     def __call__(
         self, population: List[Individual], key: str, goal: Goal, env: Environment
     ) -> Any:
-        count = int(len(population) * evalf(self._ratio, population, env))
+        count = int(len(population) * evalf(self._ratio, env["time"]))
         idx = 0
         for loser in population[count:]:
             winner = population[idx]
@@ -111,7 +111,7 @@ class UniformCrossover:
         env: Environment,
     ) -> None:
         ind1, ind2 = pair
-        pswap = evalf(self.pswap, inds=[ind1, ind2], env=env)
+        pswap = evalf(self.pswap, env["time"])
         dim = target.dimension
         rng = env["rng"]
         for pos in range(dim):

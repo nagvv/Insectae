@@ -34,32 +34,26 @@ class BacterialForagingAlgorithm(Algorithm):
 
     @staticmethod
     def initVel(
-        ind: Individual, vel: Evaluable[float], target: Target, env: Environment
+        ind: Individual, dim: int, vel: float, rng: np.random.Generator
     ) -> None:
-        dim = target.dimension
-        vel = evalf(vel, inds=[ind], env=env)
-        ind["v"] = randomDirectedVector(dim, vel, env["rng"])
+        ind["v"] = randomDirectedVector(dim, vel, rng)
 
     @staticmethod
     def rotate(
         ind: Individual,
-        vel: Evaluable[float],
-        probRotate: Evaluable[Tuple[float, float]],
-        target: Target,
+        vel: float,
+        probRotate: Tuple[float, float],
+        dim: int,
         goal: Goal,
-        env: Environment,
+        rng: np.random.Generator,
     ) -> None:
-        prob = evalf(probRotate, inds=[ind], env=env)
         new_is_better = goal.isBetter(ind["fNew"], ind["f"])
-        r = env["rng"].random()
-        if new_is_better and r < prob[0] or not new_is_better and r < prob[1]:
-            vel = evalf(vel, inds=[ind], env=env)
-            dim = target.dimension
-            ind["v"] = randomDirectedVector(dim, vel, env["rng"])
+        r = rng.random()
+        if new_is_better and r < probRotate[0] or not new_is_better and r < probRotate[1]:
+            ind["v"] = randomDirectedVector(dim, vel, rng)
 
     @staticmethod
-    def updateF(ind: Individual, gamma: Evaluable[float], env: Environment) -> None:
-        gamma = evalf(gamma, inds=[ind], env=env)
+    def updateF(ind: Individual, gamma: float) -> None:
         ind["f"] = ind["fNew"]
         ind["fTotal"] = (gamma * ind["fTotal"] + ind["fNew"]) / (gamma + 1)
 
@@ -79,9 +73,9 @@ class BacterialForagingAlgorithm(Algorithm):
             self.population,
             self.initVel,
             {
-                "vel": self.vel,
-                "target": self.target,
-                "env": self.env,
+                "dim": self.target.dimension,
+                "vel": evalf(self.vel, self.env["time"]),
+                "rng": self.rng,
             },
         )
         self.executor.foreach(
@@ -140,11 +134,11 @@ class BacterialForagingAlgorithm(Algorithm):
             self.population,
             self.rotate,
             {
-                "vel": self.vel,
-                "probRotate": self.probRotate,
+                "vel": evalf(self.vel, self.env["time"]),
+                "probRotate": evalf(self.probRotate, self.env["time"]),
                 "goal": self.goal,
-                "target": self.target,
-                "env": self.env,
+                "dim": self.target.dimension,
+                "rng": self.rng,
             },
             timingLabel="rotate",
             timer=timer,
@@ -152,10 +146,7 @@ class BacterialForagingAlgorithm(Algorithm):
         self.executor.foreach(
             self.population,
             self.updateF,
-            {
-                "gamma": self.gamma,
-                "env": self.env,
-            },
+            {"gamma": evalf(self.gamma, self.env["time"])},
             timingLabel="updatef",
             timer=timer,
         )
@@ -231,6 +222,6 @@ class ShapeClustering:
         self.goal = 1 if goal == "min" else -1
 
     def __call__(self, x: float, inds: List[Individual], env: Environment) -> float:
-        d = evalf(self.d, inds=inds, env=env)
+        d = evalf(self.d, env["time"])
         x2 = (x / d) ** 2
         return self.goal * (2 * np.exp(-x2) - 3 * np.exp(-4 * x2))

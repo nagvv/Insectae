@@ -1,6 +1,6 @@
 from typing import Callable
 
-from numpy import exp
+from numpy import exp, random
 
 from .alg_base import Algorithm
 from .common import copyAttribute, evalf
@@ -56,9 +56,9 @@ class SimulatedAnnealing(Algorithm):
             self.population,
             self.accept,
             {
-                "theta": self.theta,
+                "theta": evalf(self.theta, self.env["time"]),
                 "goal": self.goal,
-                "env": self.env,
+                "rng": self.rng,
             },
             timingLabel="accept",
             timer=timer,
@@ -66,10 +66,9 @@ class SimulatedAnnealing(Algorithm):
 
     @staticmethod
     def accept(
-        ind: Individual, theta: Evaluable[float], goal: Goal, env: Environment
+        ind: Individual, theta: float, goal: Goal, rng: random.Generator
     ) -> None:
-        theta = evalf(theta, inds=[ind], env=env)
         df = abs(ind["fNew"] - ind["f"])
-        if goal.isBetter(ind["fNew"], ind["f"]) or env["rng"].random() < exp(-df / theta):
+        if goal.isBetter(ind["fNew"], ind["f"]) or rng.random() < exp(-df / theta):
             ind["f"] = ind["fNew"]
             ind["x"] = ind["xNew"].copy()
