@@ -16,7 +16,7 @@ class Algorithm:
         stop: Callable[[Environment], bool] = lambda x: False,
         opInit: Optional[Callable[..., None]] = None,
         env: Optional[Environment] = None,
-        executor: BaseExecutor = BaseExecutor(),
+        executor: Optional[BaseExecutor] = None,
         rng_seed: Union[None, int, Sequence[int], Generator] = None
     ) -> None:
         self.target = target
@@ -25,8 +25,13 @@ class Algorithm:
         self.popSize = popSize
         self.opInit = opInit if opInit is not None else target.defaultInit()
         self.env = env if env is not None else {}
-        self.executor = executor
+        self.executor = executor if executor is not None else BaseExecutor()
         self.rng = default_rng(rng_seed)
+
+        self.executor.init(
+            context={"target": self.target, "goal": self.goal},
+            rng=self.rng,
+        )
 
         self.population: List[Individual] = []  # FIXME, from argument?
         self.additionalProcedures: Dict[str, List[Callable[..., None]]] = {
@@ -45,7 +50,7 @@ class Algorithm:
         if reverse:
             procedures = reversed(procedures)
         for proc in procedures:
-            proc(self.population, self.env)  # FIXME **self.env??
+            proc(self.population, self.env)
 
     def checkKey(self, key: str) -> str:  # FIXME make internal?
         if key[0] in "*&":

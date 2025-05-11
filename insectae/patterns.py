@@ -18,7 +18,7 @@ def evaluate(
     keyf: str,
     env: Environment,
     reEvalKey: Optional[str] = None,
-    executor=None,  # FIXME circle dep?
+    executor=None,
 ) -> None:
     target: Target = env["target"]
     if executor is None:
@@ -50,6 +50,7 @@ def evaluate(
         target.update(x=ind[keyx], f=new_f, reEval=True)
 
 
+# must be in global scope to be able to be pickleable (i.e. sendable to workers)
 def _call_wrap(op: Callable[..., None], ind: Individual, fnkwargs: FuncKWArgs):
     # with map/starmap interface we only able to send positional arguments,
     # so passing kwargs as positional argument and then unpacking it
@@ -64,18 +65,15 @@ def foreach(
     fnkwargs: FuncKWArgs,
     executor=None,
 ) -> None:
-    for ind in population:
-        op(ind, **fnkwargs)
-    # if executor is None:
-    #     for ind in population:
-    #         op(ind, **fnkwargs)
-    #     return
-    # # TODO ensure that fnkwargs is sent once per worker?
-    # # FIXME: doesn't work properly for multiprocessing/mpi?
-    # population[:] = executor.starmap(
-    #     _call_wrap,
-    #     zip(repeat(op), population, repeat(fnkwargs))
-    # )
+    if executor is None:
+        for ind in population:
+            op(ind, **fnkwargs)
+        return
+
+    population[:] = executor.starmap(
+        _call_wrap,
+        zip(repeat(op), population, repeat(fnkwargs))
+    )
 
 
 @timing

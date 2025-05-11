@@ -1,5 +1,7 @@
 from itertools import starmap
-from typing import Any, Callable, Iterable, Tuple, Set, Optional
+from typing import Any, Callable, Iterable, Tuple, Set, Optional, Dict
+
+import numpy as np
 
 from .patterns import evaluate, foreach, neighbors, pairs, pop2ind, reducePop, signals
 
@@ -8,6 +10,9 @@ class BaseExecutor:
     def __init__(self, patterns: Optional[Set[str]] = None, *args, **kwargs) -> None:
         self.patterns = patterns if patterns is not None else {"evaluate"}
         super().__init__(*args, **kwargs)
+
+    def init(self, context: Dict[str, Any], rng: np.random.Generator) -> None:
+        pass
 
     def starmap(
         self, fn: Callable[..., Any], fnargs: Iterable[Tuple], **kwargs

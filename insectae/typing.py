@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, Mapping, TypeVar, Union, List
 
 _T = TypeVar("_T")
 Individual = Dict[str, Any]
-FuncKWArgs = Mapping[str, Any]
+FuncKWArgs = Dict[str, Any]
 Environment = Dict[str, Any]
 Evaluable = Union[_T, Callable[[int], _T]]
 
