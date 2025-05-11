@@ -101,7 +101,6 @@ class FireflyAlgorithm(Algorithm):
             self.population,
             self.op_p2i,
             timingLabel="op_p2i",
-            **self.env
         )
         self.executor.foreach(
             self.population,

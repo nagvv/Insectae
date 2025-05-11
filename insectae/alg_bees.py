@@ -55,7 +55,7 @@ class BeesAlgorithm(Algorithm):
             self.opFly,
             key="x",
             timingLabel="fly",
-            **self.env
+            env=self.env
         )
         self.executor.evaluate(
             self.bees,
@@ -70,7 +70,7 @@ class BeesAlgorithm(Algorithm):
             self.bees,
             self.updatePlace,
             timingLabel="update",
-            **self.env
+            goal=self.goal
         )
 
 
@@ -86,17 +86,17 @@ class OpFly:
         self.opGlobal = opGlobal
         self.probs = opProbs(psize)
 
-    def __call__(self, bee, places, target, key, **kwargs) -> None:
-        rand_val = kwargs["rng"].random()
+    def __call__(self, bee, places, index, key, env) -> None:
+        rand_val = env["rng"].random()
         for place in places:
             prob = self.probs[place["_rank"]]
             if rand_val < prob:
                 bee["_rank"] = place["_rank"]
                 if place["_rank"] == len(places) - 1:
-                    self.opGlobal(ind=bee, target=target, key=key, env=kwargs)
+                    self.opGlobal(ind=bee, target=env["target"], key=key, env=env)
                 else:
                     bee["x"] = place["x"].copy()
-                    self.opLocal(ind=bee, key=key, env=kwargs)
+                    self.opLocal(ind=bee, key=key, env=env)
                 return
             rand_val -= prob
 
