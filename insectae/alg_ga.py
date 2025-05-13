@@ -31,19 +31,23 @@ class GeneticAlgorithm(Algorithm):
         timer = self.env.get("timer")
         self.opSelect(
             self.population,
-            key="f",
-            goal=self.goal,
+            fnkwargs={
+                "key": "f",
+                "goal": self.goal,
+                "env": self.env,
+            },
             timingLabel="select",
             timer=timer,
-            env=self.env,
         )
         self.opCrossover(
             self.population,
-            key="x",
-            target=self.target,
+            fnkwargs={
+                "key": "x",
+                "target": self.target,
+                "env": self.env,
+            },
             timingLabel="cross",
             timer=timer,
-            env=self.env,
         )
         self.executor.foreach(
             self.population,

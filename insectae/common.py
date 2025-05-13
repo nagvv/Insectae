@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 from .goals import Goal
 from .patterns import neighbors, pairs
 from .timer import timing
-from .typing import Environment, Evaluable, Individual
+from .typing import Environment, Evaluable, Individual, FuncKWArgs
 
 # TODO move some to the operators.py or move these here
 
@@ -124,16 +124,31 @@ class TimedOp:
         if time % self.dt == 0:
             self.method(ind_or_inds, **opkwargs)
 
-
-class Shuffled:
-    def __init__(self, op: Callable[..., None]) -> None:
+# TODO unify all other __call__ signatures
+class ShuffledNeighbors:
+    def __init__(self, op: Callable[..., None], rng: np.random.Generator = None, executor=None) -> None:
         self.op = op
+        self.rng = rng if rng is not None else np.random.default_rng()
+        self.executor = executor
 
-    def __call__(self, population: List[Individual], env: Environment, **opkwargs) -> None:
+    def __call__(self, population: List[Individual], fnkwargs: FuncKWArgs, **kwargs) -> None:
         perm = list(range(len(population)))
-        env["rng"].shuffle(perm)
-        # TODO pass executor
-        neighbors(population, self.op, perm, env=env, **opkwargs)
+        self.rng.shuffle(perm)
+        if self.executor is None:
+            return neighbors(
+                population=population,
+                op=self.op,
+                permutation=perm,
+                fnkwargs=fnkwargs,
+                **kwargs
+            )
+        return self.executor.neighbors(
+            population=population,
+            op=self.op,
+            permutation=perm,
+            fnkwargs=fnkwargs,
+            **kwargs
+        )
 
 
 def samplex(n: int, m: int, exclude: List[int], rng: np.random.Generator) -> List[int]:

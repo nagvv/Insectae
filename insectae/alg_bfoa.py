@@ -152,9 +152,11 @@ class BacterialForagingAlgorithm(Algorithm):
         )
         self.opSelect(
             self.population,
-            key="fTotal",
-            goal=self.goal,
-            env=self.env,
+            fnkwargs={
+                "key": "fTotal",
+                "goal": self.goal,
+                "env": self.env,
+            },
             timingLabel="select",
             timer=timer
         )

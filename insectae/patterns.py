@@ -1,6 +1,6 @@
 import functools as ft
 from typing import Any, Callable, List, Optional
-from itertools import repeat
+from itertools import repeat, chain
 
 import numpy as np
 from numpy.typing import NDArray
@@ -51,11 +51,11 @@ def evaluate(
 
 
 # must be in global scope to be able to be pickleable (i.e. sendable to workers)
-def _call_wrap(op: Callable[..., None], ind: Individual, fnkwargs: FuncKWArgs):
+def _call_wrap(op: Callable[..., None], obj: Any, fnkwargs: FuncKWArgs):
     # with map/starmap interface we only able to send positional arguments,
     # so passing kwargs as positional argument and then unpacking it
-    op(ind, **fnkwargs)
-    return ind
+    op(obj, **fnkwargs)
+    return obj
 
 
 @timing
@@ -81,12 +81,26 @@ def neighbors(
     population: List[Individual],
     op: Callable[..., None],
     permutation: List[int],
+    fnkwargs: FuncKWArgs,
     executor=None,
-    **opkwargs
 ) -> None:
-    for i in range(len(permutation) // 2):  # TODO parallel loop
-        inds_pair = population[permutation[2 * i]], population[permutation[2 * i + 1]]
-        op(inds_pair, twoway=True, **opkwargs)
+    if executor is None:
+        for i in range(len(permutation) // 2):
+            inds_pair = population[permutation[2 * i]], population[permutation[2 * i + 1]]
+            op(inds_pair, twoway=True, **fnkwargs)
+        return
+
+    shuffled = [population[i] for i in permutation]
+    shuffled[:] = chain(*executor.starmap(
+        _call_wrap,
+        zip(
+            repeat(op),
+            zip(shuffled[::2], shuffled[1::2]),
+            repeat(fnkwargs | {'twoway': True})
+        )
+    ))
+    for new_ind, idx in zip(shuffled, permutation):
+        population[idx] = new_ind
 
 
 @timing

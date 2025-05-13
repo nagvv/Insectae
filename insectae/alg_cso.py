@@ -1,12 +1,12 @@
-from typing import Tuple
+from typing import Tuple, Any
 
 import numpy as np
 
 from .alg_base import Algorithm
-from .common import Shuffled, evalf
+from .common import ShuffledNeighbors, evalf
 from .goals import Goal
 from .targets import RandomRealVector, RealTarget
-from .typing import Environment, Evaluable, Individual
+from .typing import Evaluable, Individual
 
 
 class CompetitiveSwarmOptimizer(Algorithm):
@@ -17,35 +17,35 @@ class CompetitiveSwarmOptimizer(Algorithm):
         target: RealTarget,
         **kwargs,
     ) -> None:
+        super().__init__(target=target, **kwargs)
         self.socialFactor = socialFactor
         self.delta = delta
-        self.compete = Shuffled(self.tournament)
-        super().__init__(target=target, **kwargs)
+        self.compete = ShuffledNeighbors(op=self.tournament, rng=self.rng, executor=self.executor)
         self.target: RealTarget  # hint for type checkers, FIXME is it needed?
 
     @staticmethod
     def tournament(
         pair: Tuple[Individual, Individual],
-        socialFactor: Evaluable[float],
+        phi: float,
         target: RealTarget,
         goal: Goal,
-        env: Environment,
-        twoway: bool,  # unused
+        avg_x: Any,
+        rng: np.random.Generator,
+        twoway: bool,
     ) -> None:
+        assert twoway is True
         ind1, ind2 = pair
         dim = target.dimension
-        phi = evalf(socialFactor, env["time"])
-        x = env["x"]
 
         if goal.isBetter(ind1["f"], ind2["f"]):
             winner, loser = ind1, ind2
         else:
             winner, loser = ind2, ind1
         winner["reEval"], loser["reEval"] = False, True
-        rnd = env["rng"].random(size=(3, dim))
+        rnd = rng.random(size=(3, dim))
         loser["v"] = np.multiply(rnd[0], loser["v"])
         loser["v"] += np.multiply(rnd[1], winner["x"] - loser["x"])
-        loser["v"] += np.multiply(rnd[2], phi * (x - loser["x"]))
+        loser["v"] += np.multiply(rnd[2], phi * (avg_x - loser["x"]))
         loser["x"] += loser["v"]
 
     def start(self) -> None:
@@ -66,7 +66,7 @@ class CompetitiveSwarmOptimizer(Algorithm):
     def runGeneration(self) -> None:
         timer = self.env.get("timer")
         ext, post = lambda x: x["x"], lambda x: x / self.popSize
-        self.env["x"] = self.executor.reducePop(
+        self.env["avg_x"] = self.executor.reducePop(
             population=self.population,
             extract=ext,
             op=np.add,
@@ -76,10 +76,13 @@ class CompetitiveSwarmOptimizer(Algorithm):
         )
         self.compete(
             self.population,
-            socialFactor=self.socialFactor,
-            target=self.target,
-            goal=self.goal,
-            env=self.env,
+            fnkwargs={
+                "phi": evalf(self.socialFactor, self.env["time"]),
+                "target": self.target,
+                "goal": self.goal,
+                "avg_x": self.env["avg_x"],
+                "rng": self.rng,
+            },
             timingLabel="compete",
             timer=timer,
         )
