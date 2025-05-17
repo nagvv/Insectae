@@ -143,8 +143,10 @@ class Selected:
             population,
             shadow,
             self.op,
-            key=key,
-            **self.args_from_env_getter(env),
+            fnkwargs={
+                "key": key,
+                **self.args_from_env_getter(env),
+            },
             **kwargs,
         )
 

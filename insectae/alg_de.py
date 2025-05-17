@@ -1,7 +1,8 @@
+import numpy as np
 from typing import Any, Callable, Dict, List
 
 from .alg_base import Algorithm
-from .common import evalf, samplex
+from .common import evalf, samplex, get_args_from_env
 from .goals import Goal
 from .typing import Environment, Evaluable, Individual
 
@@ -46,11 +47,12 @@ class DifferentialEvolution(Algorithm):
             self.probes,
             self.population,
             self.opCrossover,
-            key="x",
-            target=self.target,
+            fnkwargs={
+                "key": "x",
+                **get_args_from_env(self.opCrossover, self.env)
+            },
             timingLabel="crossover",
             timer=timer,
-            env=self.env,
         )
         self.executor.evaluate(
             self.probes,
@@ -64,11 +66,12 @@ class DifferentialEvolution(Algorithm):
             self.population,
             self.probes,
             self.opSelect,
-            key="f",
-            goal=self.goal,
+            fnkwargs={
+                "key": "f",
+                **get_args_from_env(self.opSelect, self.env)
+            },
             timingLabel="select",
             timer=timer,
-            env=self.env,
         )
 
 

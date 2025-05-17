@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 import numpy as np
 
 from ..executor import BaseExecutor
-from ..patterns import foreach, neighbors
+from ..patterns import foreach, neighbors, pairs
 from ..typing import FuncKWArgs, Individual
 
 
@@ -97,13 +97,48 @@ class MultiprocessingExecutor(BaseExecutor):
         op: Callable[..., None],
         permutation: List[int],
         fnkwargs: FuncKWArgs,
-        **kwargs
+        **kwargs,
     ) -> None:
         if "neighbors" not in self.patterns or "env" in fnkwargs:
-            return neighbors(population, op, permutation, fnkwargs, executor=None, **kwargs)
+            return neighbors(
+                population, op, permutation, fnkwargs, executor=None, **kwargs
+            )
 
         for key in self.context_keys:
             if key in fnkwargs:
                 fnkwargs[key] = None
 
-        return neighbors(population, op, permutation, fnkwargs, executor=_ExecutorWithContext(self.pool), **kwargs)
+        return neighbors(
+            population,
+            op,
+            permutation,
+            fnkwargs,
+            executor=_ExecutorWithContext(self.pool),
+            **kwargs,
+        )
+
+    def pairs(
+        self,
+        population1: List[Individual],
+        population2: List[Individual],
+        op: Callable[..., None],
+        fnkwargs: FuncKWArgs,
+        **kwargs,
+    ) -> None:
+        if "pairs" not in self.patterns or "env" in fnkwargs:
+            return pairs(
+                population1, population2, op, fnkwargs, executor=None, **kwargs
+            )
+
+        for key in self.context_keys:
+            if key in fnkwargs:
+                fnkwargs[key] = None
+
+        return pairs(
+            population1,
+            population2,
+            op,
+            fnkwargs,
+            executor=_ExecutorWithContext(self.pool),
+            **kwargs,
+        )

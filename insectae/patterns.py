@@ -1,6 +1,6 @@
 import functools as ft
+from itertools import chain, repeat
 from typing import Any, Callable, List, Optional
-from itertools import repeat, chain
 
 import numpy as np
 from numpy.typing import NDArray
@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 # from .executor import BaseExecutor
 from .targets import Target
 from .timer import timing
-from .typing import Environment, Individual, FuncKWArgs
+from .typing import Environment, FuncKWArgs, Individual
 
 
 @timing
@@ -71,8 +71,7 @@ def foreach(
         return
 
     population[:] = executor.starmap(
-        _call_wrap,
-        zip(repeat(op), population, repeat(fnkwargs))
+        _call_wrap, zip(repeat(op), population, repeat(fnkwargs))
     )
 
 
@@ -86,19 +85,24 @@ def neighbors(
 ) -> None:
     if executor is None:
         for i in range(len(permutation) // 2):
-            inds_pair = population[permutation[2 * i]], population[permutation[2 * i + 1]]
+            inds_pair = (
+                population[permutation[2 * i]],
+                population[permutation[2 * i + 1]],
+            )
             op(inds_pair, twoway=True, **fnkwargs)
         return
 
     shuffled = [population[i] for i in permutation]
-    shuffled[:] = chain(*executor.starmap(
-        _call_wrap,
-        zip(
-            repeat(op),
-            zip(shuffled[::2], shuffled[1::2]),
-            repeat(fnkwargs | {'twoway': True})
+    shuffled[:] = chain(
+        *executor.starmap(
+            _call_wrap,
+            zip(
+                repeat(op),
+                zip(shuffled[::2], shuffled[1::2]),
+                repeat(fnkwargs | {"twoway": True}),
+            ),
         )
-    ))
+    )
     for new_ind, idx in zip(shuffled, permutation):
         population[idx] = new_ind
 
@@ -108,11 +112,25 @@ def pairs(
     population1: List[Individual],
     population2: List[Individual],
     op: Callable[..., None],
+    fnkwargs: FuncKWArgs,
     executor=None,
-    **opkwargs
 ) -> None:
-    for inds_pair in zip(population1, population2):  # TODO parallel loop
-        op(inds_pair, twoway=False, **opkwargs)
+    if executor is None:
+        for inds_pair in zip(population1, population2):
+            op(inds_pair, twoway=False, **fnkwargs)
+        return
+
+    population1[:] = (
+        ind
+        for (ind, _) in executor.starmap(
+            _call_wrap,
+            zip(
+                repeat(op),
+                zip(population1, population2),
+                repeat(fnkwargs | {"twoway": False}),
+            ),
+        )
+    )
 
 
 @timing
