@@ -3,7 +3,7 @@ from typing import Callable, List, Optional
 import numpy as np
 
 from .alg_base import Algorithm
-from .common import FillAttribute, copyAttribute, simpleMove
+from .operators import FillAttribute, copyAttribute, simpleMove
 from .goals import Goal
 from .targets import Target
 from .typing import Environment, Individual

@@ -3,7 +3,8 @@ from typing import Any, Callable, List, Optional, Tuple
 import numpy as np
 
 from .alg_base import Algorithm
-from .common import Evaluable, copyAttribute, evalf, simpleMove
+from .common import Evaluable, evalf
+from .operators import copyAttribute, simpleMove
 from .goals import Goal
 from .targets import RandomRealVector, RealTarget
 from .typing import Environment, Individual

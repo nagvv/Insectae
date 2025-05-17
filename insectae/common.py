@@ -1,17 +1,11 @@
-import copy
-from operator import itemgetter
-from typing import Any, Callable, List, TypeVar, Union
 from bisect import bisect
+from inspect import Parameter, signature
+from typing import Any, Callable, Dict, List, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
 
-from .goals import Goal
-from .patterns import neighbors, pairs
-from .timer import timing
-from .typing import Environment, Evaluable, Individual, FuncKWArgs
-
-# TODO move some to the operators.py or move these here
+from .typing import Environment, Evaluable
 
 _T = TypeVar("_T")
 
@@ -22,27 +16,37 @@ def evalf(param: Evaluable[_T], time: int) -> _T:
     return param
 
 
-class FillAttribute:
-    def __init__(self, op: Any) -> None:
-        self.op = op
+# Evaluables (i.e. used with evalf)
+class ExpCool:
+    def __init__(self, x0: float, q: float) -> None:
+        self.x = x0
+        self.q = q
+        self.gen = 0
 
-    def __call__(self, ind: Individual, key: str, **opkwargs) -> None:
-        if callable(self.op):
-            ind[key] = self.op(**opkwargs)
-        elif np.isscalar(self.op):
-            ind[key] = self.op
-        else:
-            # FIXME: is there type that is not scalar and doesn't define copy()
-            ind[key] = self.op.copy()
-
-
-def copyAttribute(ind: Individual, keyFrom: str, keyTo: str) -> None:
-    if np.isscalar(ind[keyFrom]):
-        ind[keyTo] = ind[keyFrom]
-    else:
-        ind[keyTo] = ind[keyFrom].copy()
+    def __call__(self, time: int) -> float:
+        gen = time
+        if gen > self.gen:
+            self.gen = gen
+            self.x *= self.q
+        return self.x  # TODO: добавить возможность работы со списками или кортежами
 
 
+class HypCool:
+    def __init__(self, x0: float, deg: float) -> None:
+        self.x0 = x0
+        self.x = x0
+        self.deg = deg
+        self.gen = 0
+
+    def __call__(self, time: int) -> float:
+        gen = time
+        if gen > self.gen:
+            self.gen = gen
+            self.x = self.x0 / gen**self.deg
+        return self.x
+
+
+# Other common functions
 def weighted_choice(values: List[Any], weights: List[float], rng: np.random.Generator):
     """
     Select a random element from `values` with probabilities proportional to `weights`.
@@ -66,7 +70,6 @@ def weighted_choice(values: List[Any], weights: List[float], rng: np.random.Gene
     rng : np.random.Generator
         A NumPy random generator instance for generating random numbers.
     """
-
     total = 0
     cum_weights = []
     for w in weights:
@@ -77,131 +80,22 @@ def weighted_choice(values: List[Any], weights: List[float], rng: np.random.Gene
     return values[i]
 
 
-class Mixture:
-    def __init__(self, methods: List[Callable[..., None]], probs: List[float]) -> None:
-        if len(methods) != len(probs):
-            raise ValueError("The lengths of `methods` and `probs` must be the same.")
-        if any(w < 0 for w in probs):
-            raise ValueError("`probs` must be non-negative.")
-        if sum(probs) == 0:
-            raise ValueError("The sum of probs must be greater than zero.")
-
-        self.methods = methods + [self._noop]  # append no-op
-        self.probs = probs + [1.0 - np.sum(probs)]
-
-    @staticmethod
-    def _noop(*args, **kwargs):
-        pass
-
-    def __call__(self, inds: List[Individual], env: Environment, **opkwargs) -> None:
-        method = weighted_choice(self.methods, self.probs, env["rng"])
-        method(inds, env=env, **opkwargs)
-
-
-class ProbOp:
-    def __init__(
-        self, method: Callable[..., None], prob: Union[float, Callable[..., float]]
-    ) -> None:
-        self.method = method
-        self.prob = prob
-
-    # TODO: ind_or_inds is not good
-    def __call__(
-        self, ind_or_inds: Union[Individual, List[Individual]], env: Environment, **opkwargs
-    ) -> None:
-        prob = evalf(self.prob, env["time"])
-        if env["rng"].random() < prob:
-            self.method(ind_or_inds, env=env, **opkwargs)
-
-
-class TimedOp:
-    def __init__(self, method: Callable[..., None], dt: int) -> None:
-        self.method = method
-        self.dt = dt
-
-    def __call__(self, ind_or_inds: Union[Individual, List[Individual]], **opkwargs) -> None:
-        time = opkwargs["env"]["time"]
-        if time % self.dt == 0:
-            self.method(ind_or_inds, **opkwargs)
-
-# TODO unify all other __call__ signatures
-class ShuffledNeighbors:
-    def __init__(self, op: Callable[..., None], rng: np.random.Generator = None, executor=None) -> None:
-        self.op = op
-        self.rng = rng if rng is not None else np.random.default_rng()
-        self.executor = executor
-
-    def __call__(self, population: List[Individual], fnkwargs: FuncKWArgs, **kwargs) -> None:
-        perm = list(range(len(population)))
-        self.rng.shuffle(perm)
-        if self.executor is None:
-            return neighbors(
-                population=population,
-                op=self.op,
-                permutation=perm,
-                fnkwargs=fnkwargs,
-                **kwargs
-            )
-        return self.executor.neighbors(
-            population=population,
-            op=self.op,
-            permutation=perm,
-            fnkwargs=fnkwargs,
-            **kwargs
-        )
+def get_args_from_env(op: Callable, env: Environment) -> Dict[str, Any]:
+    sig = signature(op)
+    envargs = {}
+    for idx, (key, par) in enumerate(sig.parameters.items()):
+        if idx == 0:  # expected to be ind or pair of inds
+            assert par.kind is Parameter.POSITIONAL_OR_KEYWORD
+            continue
+        if key == "key" or key == "twoway":  # provided explicitly or by pattern
+            continue
+        envargs[key] = env[key]
+    return envargs
 
 
 def samplex(n: int, m: int, exclude: List[int], rng: np.random.Generator) -> List[int]:
     s = list(set(range(n)) - set(exclude))
     return list(rng.choice(s, m, False))
-
-
-class Selected:
-    def __init__(self, op: Callable[..., None]) -> None:
-        self.op = op
-
-    def __call__(self, population: List[Individual], env: Environment, **opkwargs) -> None:
-        shadow: List[Individual] = []
-        rng = env["rng"]
-        for i in range(len(population)):
-            j = samplex(len(population), 1, [i], rng)[0]
-            shadow.append(copy.deepcopy(population[j]))
-        # TODO pass executor
-        pairs(population, shadow, self.op, env=env, **opkwargs)
-
-
-class Sorted:
-    def __init__(
-        self, op: Callable[..., None], in_place: bool = True, reverse: bool = False
-    ) -> None:
-        self._op = op
-        self._in_place = in_place
-        self._reverse = reverse
-
-    @timing
-    def __call__(
-        self, population: List[Individual], key: str, goal: Goal, env: Environment
-    ) -> Any:
-        if self._in_place:
-            population.sort(
-                key=goal.get_cmp_to_key(itemgetter(key)), reverse=self._reverse
-            )
-            self._op(population, key, goal, env)
-        else:
-            self._op(
-                sorted(
-                    population,
-                    key=goal.get_cmp_to_key(itemgetter(key)),
-                    reverse=self._reverse,
-                ),
-                key,
-                goal,
-                env,
-            )
-
-
-def simpleMove(ind: Individual, keyx: str, keyv: str, dt: float) -> None:
-    ind[keyx] += dt * ind[keyv]
 
 
 def l2metrics(x: NDArray, y: NDArray) -> float:

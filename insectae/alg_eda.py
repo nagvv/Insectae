@@ -40,10 +40,9 @@ class UnivariateMarginalDistributionAlgorithm(Algorithm):
         self.opSelect(
             self.population,
             key="f",
-            goal=self.goal,
+            env=self.env,
             timingLabel="select",
             timer=timer,
-            env=self.env,
         )
         probs = self.executor.reducePop(
             population=self.population,

@@ -3,7 +3,8 @@ from typing import Tuple, Any
 import numpy as np
 
 from .alg_base import Algorithm
-from .common import ShuffledNeighbors, evalf
+from .common import evalf
+from .operators import ShuffledNeighbors
 from .goals import Goal
 from .targets import RandomRealVector, RealTarget
 from .typing import Evaluable, Individual
@@ -20,24 +21,27 @@ class CompetitiveSwarmOptimizer(Algorithm):
         super().__init__(target=target, **kwargs)
         self.socialFactor = socialFactor
         self.delta = delta
-        self.compete = ShuffledNeighbors(op=self.tournament, rng=self.rng, executor=self.executor)
+        self.compete = ShuffledNeighbors(op=self.tournament)
         self.target: RealTarget  # hint for type checkers, FIXME is it needed?
 
     @staticmethod
     def tournament(
         pair: Tuple[Individual, Individual],
-        phi: float,
+        key: str,
+        socialFactor: Evaluable[float],
         target: RealTarget,
         goal: Goal,
         avg_x: Any,
         rng: np.random.Generator,
         twoway: bool,
+        time: int
     ) -> None:
         assert twoway is True
         ind1, ind2 = pair
         dim = target.dimension
+        phi = evalf(socialFactor, time)
 
-        if goal.isBetter(ind1["f"], ind2["f"]):
+        if goal.isBetter(ind1[key], ind2[key]):
             winner, loser = ind1, ind2
         else:
             winner, loser = ind2, ind1
@@ -76,13 +80,8 @@ class CompetitiveSwarmOptimizer(Algorithm):
         )
         self.compete(
             self.population,
-            fnkwargs={
-                "phi": evalf(self.socialFactor, self.env["time"]),
-                "target": self.target,
-                "goal": self.goal,
-                "avg_x": self.env["avg_x"],
-                "rng": self.rng,
-            },
+            key="f",
+            env=self.env,
             timingLabel="compete",
             timer=timer,
         )

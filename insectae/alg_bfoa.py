@@ -4,7 +4,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .alg_base import Algorithm
-from .common import copyAttribute, evalf, FillAttribute, simpleMove, l2metrics
+from .common import evalf, l2metrics
+from .operators import copyAttribute, FillAttribute, simpleMove
 from .goals import Goal
 from .targets import Target
 from .typing import Evaluable, Individual, Environment
@@ -113,11 +114,10 @@ class BacterialForagingAlgorithm(Algorithm):
         )
         self.opSignals(
             self.population,
-            keyx="x",
-            keys="fs",
+            key="fs",
+            env=self.env,
             timingLabel="signals",
-            timer=timer,
-            env=self.env
+            timer=timer
         )
         self.executor.foreach(
             self.population,
@@ -152,11 +152,8 @@ class BacterialForagingAlgorithm(Algorithm):
         )
         self.opSelect(
             self.population,
-            fnkwargs={
-                "key": "fTotal",
-                "goal": self.goal,
-                "env": self.env,
-            },
+            key="fTotal",
+            env=self.env,
             timingLabel="select",
             timer=timer
         )
@@ -202,15 +199,17 @@ class CalcSignals:
             self.reduce = reduce
         self.metrics = metrics
 
-    def __call__(self, population: List[Individual], keyx: str, keys: str, **kwargs) -> None:
-        # TODO pass executor
-        signals(
+    def __call__(
+        self, population: List[Individual], key: str, env: Environment, **kwargs
+    ) -> None:
+        env["executor"].signals(
             population=population,
             metrics=self.metrics,
             shape=self.shape,
             reduce=self.reduce,
-            keyx=keyx,
-            keys=keys,
+            keyx="x",  # TODO will be removed? or pass as a pair
+            keys=key,
+            env=env,
             **kwargs
         )
 
