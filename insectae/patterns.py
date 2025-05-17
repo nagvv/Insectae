@@ -1,6 +1,6 @@
 import functools as ft
-from itertools import chain, repeat
-from typing import Any, Callable, List, Optional
+from itertools import chain, repeat, count
+from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -51,10 +51,19 @@ def evaluate(
 
 
 # must be in global scope to be able to be pickleable (i.e. sendable to workers)
-def _call_wrap(op: Callable[..., None], obj: Any, fnkwargs: FuncKWArgs):
+def _call_wrap(
+    op: Callable[..., None],
+    obj: Any,
+    fnpargs: Optional[Tuple] = None,
+    fnkwargs: Optional[FuncKWArgs] = None,
+):
+    if fnpargs is None:
+        fnpargs = ()
+    if fnkwargs is None:
+        fnkwargs = {}
     # with map/starmap interface we only able to send positional arguments,
     # so passing kwargs as positional argument and then unpacking it
-    op(obj, **fnkwargs)
+    op(obj, *fnpargs, **fnkwargs)
     return obj
 
 
@@ -71,7 +80,7 @@ def foreach(
         return
 
     population[:] = executor.starmap(
-        _call_wrap, zip(repeat(op), population, repeat(fnkwargs))
+        _call_wrap, zip(repeat(op), population, repeat(None), repeat(fnkwargs))
     )
 
 
@@ -99,6 +108,7 @@ def neighbors(
             zip(
                 repeat(op),
                 zip(shuffled[::2], shuffled[1::2]),
+                repeat(None),
                 repeat(fnkwargs | {"twoway": True}),
             ),
         )
@@ -127,6 +137,7 @@ def pairs(
             zip(
                 repeat(op),
                 zip(population1, population2),
+                repeat(None),
                 repeat(fnkwargs | {"twoway": False}),
             ),
         )
@@ -138,12 +149,24 @@ def pop2ind(
     population1: List[Individual],
     population2: List[Individual],
     op: Callable[..., None],
+    fnkwargs: FuncKWArgs,
     executor=None,
-    **opkwargs
 ) -> None:
-    for idx in range(len(population1)):  # parallel loop
-        ind = population1[idx]
-        op(ind, population2, index=idx, **opkwargs)
+    if executor is None:
+        for idx in range(len(population1)):
+            ind = population1[idx]
+            op(ind, population2, index=idx, **fnkwargs)
+        return
+
+    population1[:] = executor.starmap(
+        _call_wrap,
+        zip(
+            repeat(op),
+            population1,
+            repeat((population2,)),
+            (fnkwargs | {"index": i} for i in count())
+        )
+    )
 
 
 # reducing population into single value (can be parallelized as binary tree)

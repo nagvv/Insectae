@@ -51,10 +51,11 @@ class FireflyAlgorithm(Algorithm):
             {"key": "vel", "env": self.env},
         )
 
+    @staticmethod
     def op_p2i(
-        self, ind: Individual, pop: List[Individual], index: int, **kwargs
+        ind: Individual, pop: List[Individual], index: int
     ) -> None:
-        for idx in range(self.popSize):
+        for idx in range(len(pop)):
             ind["neighbors"][idx, 0] = pop[idx]["val"]
             ind["neighbors"][idx, 1:] = pop[idx]["x"]
 
@@ -100,7 +101,9 @@ class FireflyAlgorithm(Algorithm):
             self.population,
             self.population,
             self.op_p2i,
+            fnkwargs={},
             timingLabel="op_p2i",
+            timer=timer,
         )
         self.executor.foreach(
             self.population,

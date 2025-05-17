@@ -37,11 +37,15 @@ class DifferentialEvolution(Algorithm):
             self.probes,
             self.population,
             self.opMakeProbe,
-            keyx="x",
-            keyf="f",
+            fnkwargs={
+                "keyx": "x",
+                "keyf": "f",
+                "time": self.env["time"],
+                "goal": self.goal,
+                "rng": self.rng,
+            },
             timingLabel="makeprobes",
             timer=timer,
-            env=self.env,
         )
         self.executor.pairs(
             self.probes,
@@ -90,13 +94,15 @@ class ProbeClassic:
         self,
         ind: Individual,
         population: List[Individual],
+        index: int,
         keyx: str,
         keyf: str,
-        index: int,
-        env: Environment,
+        time: int,
+        goal: Goal,
+        rng: np.random.Generator
     ) -> None:
-        weight = evalf(self.weight, env["time"])
-        S = samplex(len(population), 3, [index], env["rng"])
+        weight = evalf(self.weight, time)
+        S = samplex(len(population), 3, [index], rng)
         a, b, c = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx])
 
@@ -109,14 +115,16 @@ class ProbeBest:
         self,
         ind: Individual,
         population: List[Individual],
+        index: int,
         keyx: str,
         keyf: str,
-        index: int,
-        env: Environment,
+        time: int,
+        goal: Goal,
+        rng: np.random.Generator
     ) -> None:
-        weight = evalf(self.weight, env["time"])
-        i = argbestDE(population, keyf, env["goal"])
-        sample = [i] + samplex(len(population), 2, [index, i], env["rng"])
+        weight = evalf(self.weight, time)
+        i = argbestDE(population, keyf, goal)
+        sample = [i] + samplex(len(population), 2, [index, i], rng)
         a, b, c = [population[i] for i in sample]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx])
 
@@ -129,14 +137,16 @@ class ProbeCur2Best:
         self,
         ind: Individual,
         population: List[Individual],
+        index: int,
         keyx: str,
         keyf: str,
-        index: int,
-        env: Environment,
+        time: int,
+        goal: Goal,
+        rng: np.random.Generator
     ) -> None:
-        weight = evalf(self.weight, env["time"])
-        i = argbestDE(population, keyf, env["goal"])
-        S = [index, i] + samplex(len(population), 2, [index, i], env["rng"])
+        weight = evalf(self.weight, time)
+        i = argbestDE(population, keyf, goal)
+        S = [index, i] + samplex(len(population), 2, [index, i], rng)
         cur, a, b, c = [population[i] for i in S]
         ind[keyx] = cur[keyx] + weight * (a[keyx] - cur[keyx] + b[keyx] - c[keyx])
 
@@ -149,14 +159,16 @@ class ProbeBest2:
         self,
         ind: Individual,
         population: List[Individual],
+        index: int,
         keyx: str,
         keyf: str,
-        index: int,
-        env: Environment,
+        time: int,
+        goal: Goal,
+        rng: np.random.Generator
     ) -> None:
-        weight = evalf(self.weight, env["time"])
-        i = argbestDE(population, keyf, env["goal"])
-        S = [i] + samplex(len(population), 4, [index, i], env["rng"])
+        weight = evalf(self.weight, time)
+        i = argbestDE(population, keyf, goal)
+        S = [i] + samplex(len(population), 4, [index, i], rng)
         a, b, c, d, e = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx] + d[keyx] - e[keyx])
 
@@ -169,12 +181,14 @@ class probeRandom5:
         self,
         ind: Individual,
         population: List[Individual],
+        index: int,
         keyx: str,
         keyf: str,
-        index: int,
-        env: Environment,
+        time: int,
+        goal: Goal,
+        rng: np.random.Generator
     ) -> None:
-        weight = evalf(self.weight, env["time"])
-        S = samplex(len(population), 5, [index], env["rng"])
+        weight = evalf(self.weight, time)
+        S = samplex(len(population), 5, [index], rng)
         a, b, c, d, e = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx] + d[keyx] - e[keyx])

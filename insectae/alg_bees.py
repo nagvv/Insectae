@@ -40,37 +40,40 @@ class BeesAlgorithm(Algorithm):
         self.executor.evaluate(self.population, keyx="x", keyf="f", env=self.env)
 
     @staticmethod
-    def updatePlace(
-        place: Individual, bees: List[Individual], goal: Goal, **kwargs
-    ) -> None:
+    def updatePlace(place: Individual, bees: List[Individual], index: int, goal: Goal) -> None:
         for bee in bees:
             if bee["_rank"] == place["_rank"] and goal.isBetter(bee["f"], place["f"]):
                 place["f"] = bee["f"]
                 place["x"] = bee["x"].copy()
 
     def runGeneration(self) -> None:
+        timer = self.env.get("timer")
         self.executor.pop2ind(
             self.bees,
             self.population,
             self.opFly,
-            key="x",
+            fnkwargs={
+                "key": "x",
+                "env": self.env
+            },
             timingLabel="fly",
-            env=self.env
+            timer=timer,
         )
         self.executor.evaluate(
             self.bees,
             keyx="x",
             keyf="f",
             timingLabel="evaluate",
-            timer=self.env.get("timer"),
+            timer=timer,
             env=self.env,
         )
         self.executor.pop2ind(
             self.population,
             self.bees,
             self.updatePlace,
+            fnkwargs={"goal": self.goal},
             timingLabel="update",
-            goal=self.goal
+            timer=timer,
         )
 
 
@@ -87,16 +90,17 @@ class OpFly:
         self.probs = opProbs(psize)
 
     def __call__(self, bee, places, index, key, env) -> None:
-        rand_val = env["rng"].random()
+        rng = env["rng"]
+        rand_val = rng.random()
         for place in places:
             prob = self.probs[place["_rank"]]
             if rand_val < prob:
                 bee["_rank"] = place["_rank"]
                 if place["_rank"] == len(places) - 1:
-                    self.opGlobal(ind=bee, target=env["target"], key=key, env=env)
+                    self.opGlobal(bee, target=env["target"], key=key, env=env)
                 else:
                     bee["x"] = place["x"].copy()
-                    self.opLocal(ind=bee, key=key, env=env)
+                    self.opLocal(bee, key=key, time=env["time"], rng=rng)
                 return
             rand_val -= prob
 

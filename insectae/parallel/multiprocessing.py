@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 import numpy as np
 
 from ..executor import BaseExecutor
-from ..patterns import foreach, neighbors, pairs
+from ..patterns import foreach, neighbors, pairs, pop2ind
 from ..typing import FuncKWArgs, Individual
 
 
@@ -17,7 +17,7 @@ class _ExecutorWithContext:
 
     @staticmethod
     def execute_with_context(fn: Callable[..., Any], args: Tuple) -> Any:
-        _, _, fnkwargs = args
+        _, _, _, fnkwargs = args
         for key, item in worker_context.items():
             if key in fnkwargs:
                 fnkwargs[key] = item
@@ -135,6 +135,32 @@ class MultiprocessingExecutor(BaseExecutor):
                 fnkwargs[key] = None
 
         return pairs(
+            population1,
+            population2,
+            op,
+            fnkwargs,
+            executor=_ExecutorWithContext(self.pool),
+            **kwargs,
+        )
+
+    def pop2ind(
+        self,
+        population1: List[Individual],
+        population2: List[Individual],
+        op: Callable[..., None],
+        fnkwargs: FuncKWArgs,
+        **kwargs,
+    ) -> None:
+        if "pop2ind" not in self.patterns or "env" in fnkwargs:
+            return pop2ind(
+                population1, population2, op, fnkwargs, executor=None, **kwargs
+            )
+
+        for key in self.context_keys:
+            if key in fnkwargs:
+                fnkwargs[key] = None
+
+        return pop2ind(
             population1,
             population2,
             op,
