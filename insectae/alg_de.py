@@ -29,7 +29,7 @@ class DifferentialEvolution(Algorithm):
             self.opInit,
             {"target": self.target, "key": "x", "env": self.env},
         )
-        self.executor.evaluate(self.population, keyx="x", keyf="f", env=self.env)
+        self.executor.evaluate(self.population, keyx="x", keyf="f", target=self.target)
 
     def runGeneration(self) -> None:
         timer = self.env.get("timer")
@@ -64,7 +64,7 @@ class DifferentialEvolution(Algorithm):
             keyf="f",
             timingLabel="evaluate",
             timer=timer,
-            env=self.env,
+            target=self.target,
         )
         self.executor.pairs(
             self.population,

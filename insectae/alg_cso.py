@@ -59,7 +59,7 @@ class CompetitiveSwarmOptimizer(Algorithm):
             self.opInit,
             {"target": self.target, "key": "x", "env": self.env},
         )
-        self.executor.evaluate(self.population, keyx="x", keyf="f", env=self.env)
+        self.executor.evaluate(self.population, keyx="x", keyf="f", target=self.target)
         vel = self.delta * (self.target.bounds[1] - self.target.bounds[0])
         self.executor.foreach(
             self.population,
@@ -94,5 +94,5 @@ class CompetitiveSwarmOptimizer(Algorithm):
             reEvalKey="reEval",
             timingLabel="evaluate",
             timer=timer,
-            env=self.env,
+            target=self.target,
         )

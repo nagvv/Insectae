@@ -28,7 +28,7 @@ class UnivariateMarginalDistributionAlgorithm(Algorithm):
             {"target": self.target, "key": "x", "env": self.env},
         )
         self.executor.evaluate(
-            population=self.population, keyx="x", keyf="f", env=self.env
+            population=self.population, keyx="x", keyf="f", target=self.target
         )
 
     @staticmethod
@@ -69,7 +69,7 @@ class UnivariateMarginalDistributionAlgorithm(Algorithm):
             keyf="f",
             timingLabel="evaluate",
             timer=timer,
-            env=self.env,
+            target=self.target,
         )
 
 
@@ -101,7 +101,7 @@ class PopulationBasedIncrementalLearning(Algorithm):
             {"target": self.target, "key": "x", "env": self.env},
         )
         self.executor.evaluate(
-            population=self.population, keyx="x", keyf="f", env=self.env
+            population=self.population, keyx="x", keyf="f", target=self.target
         )
         self.env["p"] = np.repeat(0.5, repeats=self.target.dimension)
 
@@ -163,6 +163,6 @@ class PopulationBasedIncrementalLearning(Algorithm):
             keyf="f",
             timingLabel="evaluate",
             timer=timer,
-            env=self.env,
+            target=self.target,
         )
 

@@ -39,7 +39,7 @@ class FireflyAlgorithm(Algorithm):
             self.opInit,
             {"target": self.target, "key": "x", "env": self.env},
         )
-        self.executor.evaluate(self.population, keyx="x", keyf="val", env=self.env)
+        self.executor.evaluate(self.population, keyx="x", keyf="val", target=self.target)
         self.executor.foreach(
             self.population,
             FillAttribute(np.zeros((self.popSize, 1 + self.target.dimension))),

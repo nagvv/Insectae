@@ -251,7 +251,7 @@ class AddFitnessSharing:
             population=population,
             keyx=env["solutionLabel"],
             keyf=keyf,
-            env=env,
+            target=env["target"],
             timingLabel="fitness_sharing",
             timer=env.get("timer"),
         )
@@ -388,7 +388,7 @@ class AddClearing:
             population=population,
             keyx=env["solutionLabel"],
             keyf=keyf,
-            env=env,
+            target=env["target"],
             timingLabel="clearing",
             timer=env.get("timer"),
         )

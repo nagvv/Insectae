@@ -27,7 +27,7 @@ class SimulatedAnnealing(Algorithm):
             self.opInit,
             {"target": self.target, "key": "x", "env": self.env},
         )
-        self.executor.evaluate(self.population, keyx="x", keyf="f", env=self.env)
+        self.executor.evaluate(self.population, keyx="x", keyf="f", target=self.target)
 
     def runGeneration(self) -> None:
         timer = self.env.get("timer")
@@ -41,7 +41,7 @@ class SimulatedAnnealing(Algorithm):
         self.executor.foreach(
             self.population,
             self.opMove,
-            {"key": "xNew", "env": self.env},
+            {"key": "xNew", "time": self.env["time"], "rng": self.rng},
             timingLabel="move",
             timer=timer,
         )
@@ -51,7 +51,7 @@ class SimulatedAnnealing(Algorithm):
             keyf="fNew",
             timingLabel="evaluate",
             timer=timer,
-            env=self.env,
+            target=self.target,
         )
         self.executor.foreach(
             self.population,

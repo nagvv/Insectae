@@ -38,7 +38,7 @@ class GravitationalSearchAlgorithm(Algorithm):
             fnkwargs={"target": self.target, "key": "x", "env": self.env},
         )
         self.executor.evaluate(
-            population=self.population, keyx="x", keyf="f", env=self.env
+            population=self.population, keyx="x", keyf="f", target=self.target
         )
         delta = evalf(self.delta, self.env["time"])
         vel = delta * (self.target.bounds[1] - self.target.bounds[0])
@@ -143,5 +143,5 @@ class GravitationalSearchAlgorithm(Algorithm):
             timer=timer,
         )
         self.executor.evaluate(
-            population=self.population, keyx="x", keyf="f", env=self.env
+            population=self.population, keyx="x", keyf="f", target=self.target
         )

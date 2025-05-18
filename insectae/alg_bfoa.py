@@ -69,7 +69,7 @@ class BacterialForagingAlgorithm(Algorithm):
                 "env": self.env,
             }
         )
-        self.executor.evaluate(self.population, keyx="x", keyf="f", env=self.env)
+        self.executor.evaluate(self.population, keyx="x", keyf="f", target=self.target)
         self.executor.foreach(
             self.population,
             self.initVel,
@@ -110,7 +110,7 @@ class BacterialForagingAlgorithm(Algorithm):
             timer=timer,
         )
         self.executor.evaluate(
-            self.population, keyx="x", keyf="fNew", timingLabel="evaluate", timer=timer, env=self.env
+            self.population, keyx="x", keyf="fNew", timingLabel="evaluate", timer=timer, target=self.target
         )
         self.opSignals(
             self.population,

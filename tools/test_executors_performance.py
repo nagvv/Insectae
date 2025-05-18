@@ -87,16 +87,16 @@ def run_tests(
         measure_execution_time(target_func, test_array),
         "sec",
     )
-    env = {"target": DummyTarget(target_func)}
+    target = DummyTarget(target_func)
     for executor_gen in executor_gens:
         executor = executor_gen()
         executor_name = type(executor).__name__
         # run evaluation once to let everything necessary to be created/cached
-        executor.evaluate(population, keyx="x", keyf="f", env=env)
+        executor.evaluate(population, keyx="x", keyf="f", target=target)
         evals = 0
         start_time = perf_counter()
         while True:
-            executor.evaluate(population, keyx="x", keyf="f", env=env)
+            executor.evaluate(population, keyx="x", keyf="f", target=target)
             evals += 1
             end_time = perf_counter()
             if end_time - start_time >= duration:

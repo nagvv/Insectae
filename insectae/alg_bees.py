@@ -37,7 +37,7 @@ class BeesAlgorithm(Algorithm):
             self.opInit,
             {"target": self.target, "key": "x", "env": self.env},
         )
-        self.executor.evaluate(self.population, keyx="x", keyf="f", env=self.env)
+        self.executor.evaluate(self.population, keyx="x", keyf="f", target=self.target)
 
     @staticmethod
     def updatePlace(place: Individual, bees: List[Individual], index: int, goal: Goal) -> None:
@@ -65,7 +65,7 @@ class BeesAlgorithm(Algorithm):
             keyf="f",
             timingLabel="evaluate",
             timer=timer,
-            env=self.env,
+            target=self.target,
         )
         self.executor.pop2ind(
             self.population,

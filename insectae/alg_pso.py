@@ -56,7 +56,7 @@ class ParticleSwarmOptimization(Algorithm):
         self.executor.foreach(
             self.population, copyAttribute, {"keyFrom": "x", "keyTo": "p"}
         )
-        self.executor.evaluate(self.population, keyx="x", keyf="f", env=self.env)
+        self.executor.evaluate(self.population, keyx="x", keyf="f", target=self.target)
         self.executor.foreach(
             self.population, copyAttribute, {"keyFrom": "f", "keyTo": "fNew"}
         )
@@ -126,7 +126,7 @@ class ParticleSwarmOptimization(Algorithm):
             keyf="fNew",
             timingLabel="evaluate",
             timer=timer,
-            env=self.env,
+            target=self.target,
         )
         self.executor.foreach(
             self.population,

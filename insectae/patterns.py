@@ -16,11 +16,10 @@ def evaluate(
     population: List[Individual],
     keyx: str,
     keyf: str,
-    env: Environment,
+    target: Target,
     reEvalKey: Optional[str] = None,
     executor=None,
 ) -> None:
-    target: Target = env["target"]
     if executor is None:
         for ind in population:
             reEval = (reEvalKey is None) or ind[reEvalKey]
