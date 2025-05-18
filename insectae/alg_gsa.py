@@ -78,19 +78,27 @@ class GravitationalSearchAlgorithm(Algorithm):
         x["x"] += vel
         x["v"] = vel
 
-    def runGeneration(self) -> None:
-        def op(f_1, f_2):
-            return (
-                f_1[0] if self.goal.isBetter(f_1[0], f_2[0]) else f_2[0],
-                f_2[1] if self.goal.isBetter(f_1[1], f_2[1]) else f_1[1],
-            )
+    @staticmethod
+    def _extract_ff(x: Individual):
+        return (x["f"], x["f"])
 
+    @staticmethod
+    def _extract_m(x: Individual):
+        return x["m"]
+
+    @staticmethod
+    def _reduce(f_1, f_2, goal):
+        return (
+            f_1[0] if goal.isBetter(f_1[0], f_2[0]) else f_2[0],
+            f_2[1] if goal.isBetter(f_1[1], f_2[1]) else f_1[1],
+        )
+
+    def runGeneration(self) -> None:
         timer = self.env.get("timer")
         self.env["best"], self.env["worst"] = self.executor.reducePop(
             population=self.population,
-            extract=lambda x: (x["f"], x["f"]),
-            op=op,
-            post=lambda x: x,
+            extract=self._extract_ff,
+            reduce=partial(self._reduce, goal=self.goal),
             timingLabel="reduce(best,worst)",
             timer=timer,
         )
@@ -103,9 +111,8 @@ class GravitationalSearchAlgorithm(Algorithm):
         )
         self.env["sum_m"] = self.executor.reducePop(
             population=self.population,
-            extract=lambda x: x["m"],
-            op=add,
-            post=lambda x: x,
+            extract=self._extract_m,
+            reduce=add,
             timingLabel="reduce(sum_m)",
             timer=timer,
         )

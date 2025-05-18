@@ -164,24 +164,22 @@ def pop2ind(
             repeat(op),
             population1,
             repeat((population2,)),
-            (fnkwargs | {"index": i} for i in count())
-        )
+            (fnkwargs | {"index": i} for i in count()),
+        ),
     )
 
 
-# reducing population into single value (can be parallelized as binary tree)
 @timing
 def reducePop(
     population: List[Individual],
     extract: Callable[[Individual], Any],
-    op: Callable[[Any, Any], Any],
-    post: Callable[[Any], Any],
+    reduce: Callable[[Any, Any], Any],
     initVal: Any = None,
     executor=None,
 ) -> Any:
     if initVal is not None:
-        return post(ft.reduce(op, map(extract, population), initVal))
-    return post(ft.reduce(op, map(extract, population)))
+        return ft.reduce(reduce, map(extract, population), initVal)
+    return ft.reduce(reduce, map(extract, population))
 
 
 # TODO allow non-number metric

@@ -67,17 +67,19 @@ class CompetitiveSwarmOptimizer(Algorithm):
             {"target": self.target, "key": "v", "env": self.env},
         )
 
+    @staticmethod
+    def _extract(ind: Individual):
+        return ind["x"]
+
     def runGeneration(self) -> None:
         timer = self.env.get("timer")
-        ext, post = lambda x: x["x"], lambda x: x / self.popSize
         self.env["avg_x"] = self.executor.reducePop(
             population=self.population,
-            extract=ext,
-            op=np.add,
-            post=post,
+            extract=self._extract,
+            reduce=np.add,
             timingLabel="reduce",
             timer=timer,
-        )
+        ) / self.popSize
         self.compete(
             self.population,
             key="f",

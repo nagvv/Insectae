@@ -1,11 +1,12 @@
+from functools import partial
 from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 
 from .alg_base import Algorithm
 from .common import Evaluable, evalf
-from .operators import copyAttribute, simpleMove
 from .goals import Goal
+from .operators import copyAttribute, simpleMove
 from .targets import RandomRealVector, RealTarget
 from .typing import Environment, Individual
 
@@ -18,7 +19,7 @@ class ParticleSwarmOptimization(Algorithm):
         delta: Evaluable[float],
         target: RealTarget,
         opLimitVel: Optional[Callable[..., None]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         self.alphabeta = alphabeta
         self.gamma = gamma
@@ -32,13 +33,11 @@ class ParticleSwarmOptimization(Algorithm):
         ind: Individual,
         g: Any,  # FIXME: position type
         gamma: float,
-        alphabeta: Tuple[float, float]
+        alphabeta: Tuple[float, float],
     ) -> None:
         alpha, beta = alphabeta
         ind["v"] = (
-            gamma * ind["v"]
-            + alpha * (ind["p"] - ind["x"])
-            + beta * (g - ind["x"])
+            gamma * ind["v"] + alpha * (ind["p"] - ind["x"]) + beta * (g - ind["x"])
         )
 
     @staticmethod
@@ -69,21 +68,25 @@ class ParticleSwarmOptimization(Algorithm):
             {"target": self.target, "key": "v", "env": self.env},
         )
 
+    @staticmethod
+    def _extract(x: Individual) -> Tuple[Any, Any]:
+        return (x["p"], x["f"])
+
+    @staticmethod
+    def _reduce(x, y, goal):
+        # [0] - solution value, [1] - fitness value
+        return x if goal.isBetter(x[1], y[1]) else y
+
     def runGeneration(self) -> None:
-        def extract(x: Individual) -> Tuple[Any, Any]:
-            return (x["p"], x["f"])
-
-        def op(x, y):
-            return x if self.goal.isBetter(x[1], y[1]) else y
-
-        def post(x):
-            return x[0]
-
         timer = self.env.get("timer")
         # TODO add additkwargs, for decorators purpose
         self.env["g"] = self.executor.reducePop(
-            self.population, extract, op, post, timingLabel="reduce", timer=timer
-        )
+            self.population,
+            self._extract,
+            partial(self._reduce, goal=self.goal),
+            timingLabel="reduce",
+            timer=timer,
+        )[0]
         self.executor.foreach(
             self.population,
             self.updateVel,
@@ -135,7 +138,9 @@ class ParticleSwarmOptimization(Algorithm):
 
 
 class RandomAlphaBeta:
-    def __init__(self, alpha: float, beta: float, rng: Optional[np.random.Generator] = None) -> None:
+    def __init__(
+        self, alpha: float, beta: float, rng: Optional[np.random.Generator] = None
+    ) -> None:
         self.alpha = alpha
         self.beta = beta
         self.rng = rng if rng is not None else np.random.default_rng()

@@ -1,4 +1,5 @@
 from typing import Callable
+from functools import partial
 import numpy as np
 from operator import itemgetter
 from numpy.typing import NDArray
@@ -35,6 +36,10 @@ class UnivariateMarginalDistributionAlgorithm(Algorithm):
         gen = env["rng"].uniform(size=probs.shape)
         ind["x"] = (gen < probs).astype(int)
 
+    @staticmethod
+    def _extract(ind: Individual):
+        return ind["x"]
+
     def runGeneration(self) -> None:
         timer = self.env.get("timer")
         self.opSelect(
@@ -46,12 +51,11 @@ class UnivariateMarginalDistributionAlgorithm(Algorithm):
         )
         probs = self.executor.reducePop(
             population=self.population,
-            extract=lambda ind: ind["x"],
-            op=lambda a, b: a + b,
-            post=lambda sum: sum / len(self.population),
+            extract=self._extract,
+            reduce=np.add,
             timingLabel="reduce",
             timer=timer,
-        )
+        ) / self.popSize
         self.executor.foreach(
             self.population,
             self.generate,
@@ -106,6 +110,18 @@ class PopulationBasedIncrementalLearning(Algorithm):
         gen = env["rng"].uniform(size=probs.shape)
         ind["x"] = (gen < probs).astype(int)
 
+    @staticmethod
+    def _extract(ind: Individual):
+        return ind["x"]
+
+    @staticmethod
+    def _reduce_plus(p, x, learning_rate):
+        return p + learning_rate * (x - p)
+
+    @staticmethod
+    def _reduce_minus(p, x, learning_rate):
+        return p - learning_rate * (x - p)
+
     def runGeneration(self) -> None:
         timer = self.env.get("timer")
         self.population.sort(key=self.goal.get_cmp_to_key(itemgetter("f")))
@@ -114,9 +130,8 @@ class PopulationBasedIncrementalLearning(Algorithm):
         probs = self.env["p"]
         probs = self.executor.reducePop(
             population=self.population[:n_best],
-            extract=lambda ind: ind["x"],
-            op=lambda p, x: p + learning_rate * (x - p),
-            post=lambda x: x,
+            extract=self._extract,
+            reduce=partial(self._reduce_plus, learning_rate=learning_rate),
             initVal=probs,
             timingLabel="reduce(probs)",
             timer=timer,
@@ -124,14 +139,13 @@ class PopulationBasedIncrementalLearning(Algorithm):
         n_worst = evalf(self._n_worst, self.env["time"])
         probs = self.executor.reducePop(
             population=self.population[self.popSize - n_worst:],
-            extract=lambda ind: ind["x"],
-            op=lambda p, x: p - learning_rate * (x - p),
-            post=lambda x: x,
+            extract=self._extract,
+            reduce=partial(self._reduce_minus, learning_rate=learning_rate),
             initVal=probs,
             timingLabel="reduce(probs)",
             timer=timer,
         )
-        self.probMutate({"": probs}, "", self.env)
+        self.probMutate({"": probs}, key="", time=self.env["time"], rng=self.rng)
         p_max = evalf(self._p_max, self.env["time"])
         p_min = evalf(self._p_min, self.env["time"])
         probs = probs.clip(min=p_min, max=p_max)

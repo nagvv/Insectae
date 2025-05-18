@@ -1,4 +1,5 @@
-from itertools import repeat
+from functools import reduce as ftreduce
+from itertools import pairwise, repeat
 from multiprocessing import Value
 from multiprocessing.pool import Pool
 from multiprocessing.sharedctypes import Synchronized
@@ -8,6 +9,7 @@ import numpy as np
 
 from ..executor import BaseExecutor
 from ..patterns import foreach, neighbors, pairs, pop2ind
+from ..timer import timing
 from ..typing import FuncKWArgs, Individual
 
 
@@ -168,3 +170,44 @@ class MultiprocessingExecutor(BaseExecutor):
             executor=_ExecutorWithContext(self.pool),
             **kwargs,
         )
+
+    @staticmethod
+    def _extract_reduce(
+        extract: Callable[[Individual], Any],
+        reduce: Callable[[Any, Any], Any],
+        population: List[Individual],
+    ):
+        return ftreduce(reduce, map(extract, population))
+
+    @timing
+    def reducePop(
+        self,
+        population: List[Individual],
+        extract: Callable[[Individual], Any],
+        reduce: Callable[[Any, Any], Any],
+        initVal: Any = None,
+    ) -> Any:
+        if len(population) == 0 and initVal is None:
+            raise TypeError("reduction on empty iterable with no initial value")
+        elif len(population) == 0:  # initVal is provided
+            return initVal
+
+        batch_size = len(population) // self.processes
+        remainder = len(population) % self.processes
+        ranges = [
+            batch_size * idx + min(remainder, idx) for idx in range(self.processes)
+        ] + [len(population)]
+        assert self.pool is not None
+        intermediate_result = self.pool.starmap(
+            self._extract_reduce,
+            zip(
+                repeat(extract),
+                repeat(reduce),
+                (population[begin:end] for begin, end in pairwise(ranges)),
+            ),
+            chunksize=1,  # the amount of jobs is equal to pool size
+        )
+        if initVal is not None:
+            return ftreduce(reduce, intermediate_result, initVal)
+        else:
+            return ftreduce(reduce, intermediate_result)
