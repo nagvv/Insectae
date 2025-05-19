@@ -61,6 +61,11 @@ class BaseExecutor:
             **kwargs
         )
 
+    def allNeighbors(self, *args, **kwargs):
+        return allNeighbors(
+            *args, executor=self if "allNeighbors" in self.patterns else None, **kwargs
+        )
+
     def signals(self, *args, **kwargs):
         return signals(
             *args,

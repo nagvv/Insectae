@@ -5,12 +5,11 @@ from typing import List
 from functools import partial
 
 import numpy as np
-from numpy.typing import NDArray
 
 from .alg_base import Algorithm
 from .common import evalf, l2metrics
 from .targets import RandomRealVector, RealTarget
-from .typing import Environment, Evaluable, Individual
+from .typing import Evaluable, Individual
 
 
 class GravitationalSearchAlgorithm(Algorithm):
@@ -60,17 +59,17 @@ class GravitationalSearchAlgorithm(Algorithm):
         x["M"] = x["m"] / sum_m
 
     @staticmethod
-    def compute_force(dist: float, inds: List[Individual], env: Environment):
-        if inds[0] is inds[1]:
-            return np.zeros(inds[0]["x"].shape)
-        mul = env["G"] * inds[0]["M"] * inds[1]["M"]
-        diff = inds[1]["x"] - inds[0]["x"]
+    def compute_force(pair, metrics, G):
+        ind1, ind2 = pair
+        dist = metrics(ind1["x"], ind2["x"])
+        mul = G * ind1["M"] * ind2["M"]
+        diff = ind2["x"] - ind1["x"]
         return mul * diff / (dist + float_info.epsilon)
 
     @staticmethod
-    def reduce_force(forces: NDArray, rng: np.random.Generator):
-        rnd_shape = (forces.shape[0], *(1,) * (forces.ndim - 1))
-        return np.sum(forces * rng.uniform(size=rnd_shape), axis=0)
+    def reduce_force(forces: List, rng: np.random.Generator):
+        weights = rng.uniform(size=(len(forces),))
+        return np.sum([force * w for force, w in zip(forces, weights)], axis=0)
 
     @staticmethod
     def move(x: Individual, rng: np.random.Generator):
@@ -124,15 +123,14 @@ class GravitationalSearchAlgorithm(Algorithm):
             timer=timer,
         )
         self.env["G"] = self.update_G()
-        self.executor.signals(
-            population=self.population,
-            metrics=l2metrics,
-            shape=self.compute_force,
-            reduce=partial(self.reduce_force, rng=self.rng),
-            keyx="x",
-            keys="F",
-            env=self.env,
-            timingLabel="signals(F)",
+        self.executor.allNeighbors(
+            self.population,
+            op=self.compute_force,
+            op_fnkwargs={"metrics": l2metrics, "G": self.env["G"]},
+            post=self.reduce_force,
+            post_fnkwargs={"rng": self.rng},
+            key="F",
+            timingLabel="forces(F)",
             timer=timer,
         )
         self.executor.foreach(

@@ -9,7 +9,6 @@ from .operators import copyAttribute, FillAttribute, simpleMove
 from .goals import Goal
 from .targets import Target
 from .typing import Evaluable, Individual, Environment
-from .patterns import signals
 
 
 class BacterialForagingAlgorithm(Algorithm):
@@ -177,7 +176,9 @@ def randomDirectedVector(dim: int, length: float, rng: np.random.Generator) -> N
 
 
 class NoSignals:
-    def __call__(self, population: List[Individual], **kwargs) -> None:
+    def __call__(
+        self, population: List[Individual], key: str, env: Environment,  **kwargs
+    ) -> None:
         pass
 
 
@@ -199,22 +200,26 @@ class CalcSignals:
             self.reduce = reduce
         self.metrics = metrics
 
+    @staticmethod
+    def _op(pair, metrics, shape, time: int):
+        return shape(metrics(pair[0]["x"], pair[1]["x"]), time=time)
+
     def __call__(
         self, population: List[Individual], key: str, env: Environment, **kwargs
     ) -> None:
-        env["executor"].signals(
+        env["executor"].allNeighbors(
             population=population,
-            metrics=self.metrics,
-            shape=self.shape,
-            reduce=self.reduce,
-            keyx="x",  # TODO will be removed? or pass as a pair
-            keys=key,
-            env=env,
+            op=self._op,
+            op_fnkwargs={
+                "metrics": self.metrics,
+                "shape": self.shape,
+                "time": env["time"],
+            },
+            post=self.reduce,
+            post_fnkwargs={},
+            key=key,
             **kwargs
         )
-
-
-# Different signal shapes
 
 
 class ShapeClustering:
@@ -222,7 +227,7 @@ class ShapeClustering:
         self.d = d
         self.goal = 1 if goal == "min" else -1
 
-    def __call__(self, x: float, inds: List[Individual], env: Environment) -> float:
-        d = evalf(self.d, env["time"])
+    def __call__(self, x: float, time: int) -> float:
+        d = evalf(self.d, time)
         x2 = (x / d) ** 2
         return self.goal * (2 * np.exp(-x2) - 3 * np.exp(-4 * x2))

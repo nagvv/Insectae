@@ -181,7 +181,70 @@ def reducePop(
     return ft.reduce(reduce, map(extract, population))
 
 
-# TODO allow non-number metric
+def _call_wrap_all_neighbors(
+    op: Callable[..., None],
+    obj: Any,
+    fnkwargs: Optional[FuncKWArgs] = None,
+):
+    if fnkwargs is None:
+        fnkwargs = {}
+    return op(obj, **fnkwargs)
+
+
+@timing
+def allNeighbors(
+    population: List[Individual],
+    op: Callable[..., Any],
+    op_fnkwargs: FuncKWArgs,
+    post: Optional[Callable[..., Any]],
+    post_fnkwargs: FuncKWArgs,
+    key: str,
+    mutating_op: bool = False,
+    executor=None,
+) -> None:
+    def iterate():
+        for i, ind1 in enumerate(population):
+            for j, ind2 in enumerate(population[i + 1:], i + 1):
+                yield i, j, ind1, ind2
+
+    popSize = len(population)
+    values = [[None] * popSize for i in range(popSize)]
+    if executor is None or mutating_op is True:
+        for i, j, ind1, ind2 in iterate():
+            values[i][j] = values[j][i] = op((ind1, ind2), **op_fnkwargs)
+    else:
+        ret = executor.starmap(
+            _call_wrap_all_neighbors,
+            zip(
+                repeat(op),
+                ((ind1, ind2) for _, _, ind1, ind2 in iterate()),
+                repeat(op_fnkwargs)
+            )
+        )
+        for (i, j, _, _), value in zip(iterate(), ret):
+            values[i][j] = values[j][i] = value
+    if post is None:
+        return
+    if executor is None:
+        for i, ind in enumerate(population):
+            ind[key] = post(values[i][:i] + values[i][i + 1:], **post_fnkwargs)
+            return
+    for i, ind in enumerate(population):
+        ind[key] = post(values[i][:i] + values[i][i + 1:], **post_fnkwargs)
+
+    ret = executor.starmap(
+        _call_wrap_all_neighbors,
+        zip(
+            repeat(post),
+            (values[i][:i] + values[i][i + 1:] for i in range(popSize)),
+            repeat(post_fnkwargs)
+        )
+    )
+    for ind, value in zip(population, ret):
+        ind[key] = value
+
+
+# NOTE: signals pattern is deprecated and is soon to be deleted
 # calculating distances between all individuals
 # for each individual convert distances to signals and reduce them to single value
 @timing

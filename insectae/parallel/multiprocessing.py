@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 import numpy as np
 
 from ..executor import BaseExecutor
-from ..patterns import foreach, neighbors, pairs, pop2ind
+from ..patterns import allNeighbors, foreach, neighbors, pairs, pop2ind
 from ..timer import timing
 from ..typing import FuncKWArgs, Individual
 
@@ -19,6 +19,7 @@ class _ExecutorWithContext:
 
     @staticmethod
     def execute_with_context(fn: Callable[..., Any], args: Tuple) -> Any:
+        # matches the signature of _call_wrap in patterns.py
         _, _, _, fnkwargs = args
         for key, item in worker_context.items():
             if key in fnkwargs:
@@ -211,3 +212,51 @@ class MultiprocessingExecutor(BaseExecutor):
             return ftreduce(reduce, intermediate_result, initVal)
         else:
             return ftreduce(reduce, intermediate_result)
+
+    def allNeighbors(
+        self,
+        population: List[Individual],
+        op: Callable[..., Any],
+        op_fnkwargs: FuncKWArgs,
+        post: Optional[Callable[..., Any]],
+        post_fnkwargs: FuncKWArgs,
+        key: str,
+        mutating_op: bool = False,
+        **kwargs,
+    ) -> None:
+        if (
+            "allNeighbors" not in self.patterns
+            or "env" in op_fnkwargs
+            or "env" in post_fnkwargs
+        ):
+            return allNeighbors(
+                population,
+                op,
+                op_fnkwargs,
+                post,
+                post_fnkwargs,
+                key,
+                mutating_op,
+                executor=None,
+                **kwargs,
+            )
+
+        for key in self.context_keys:
+            if key in op_fnkwargs:
+                op_fnkwargs[key] = None
+
+        for key in self.context_keys:
+            if key in post_fnkwargs:
+                post_fnkwargs[key] = None
+
+        return allNeighbors(
+            population,
+            op,
+            op_fnkwargs,
+            post,
+            post_fnkwargs,
+            key,
+            mutating_op,
+            executor=_ExecutorWithContext(self.pool),
+            **kwargs,
+        )
