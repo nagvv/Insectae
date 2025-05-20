@@ -8,9 +8,10 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 import numpy as np
 
 from ..executor import BaseExecutor
-from ..patterns import allNeighbors, foreach, neighbors, pairs, pop2ind
+from ..patterns import allNeighbors, foreach, neighbors, pairs, pop2ind, evaluate
 from ..timer import timing
 from ..typing import FuncKWArgs, Individual
+from ..targets import Target
 
 
 class _ExecutorWithContext:
@@ -33,6 +34,25 @@ class _ExecutorWithContext:
         return self.pool.starmap(
             self.execute_with_context,
             zip(repeat(fn), fnargs),
+            chunksize=1,  # TODO add batching
+        )
+
+
+class _EvaluateWithContext:
+    def __init__(self, pool) -> None:
+        self.pool = pool
+
+    @staticmethod
+    def evaluate_with_context(args: Tuple) -> Any:
+        return worker_context["target"].get_func()(args)
+
+    def starmap(
+        self, _: Callable[..., Any], fnargs: Iterable[Tuple], **kwargs
+    ) -> Iterable[Any]:
+        assert self.pool is not None
+        return self.pool.starmap(
+            self.evaluate_with_context,
+            fnargs,
             chunksize=1,  # TODO add batching
         )
 
@@ -70,6 +90,23 @@ class MultiprocessingExecutor(BaseExecutor):
     ) -> Iterable[Any]:
         assert self.pool is not None
         return self.pool.starmap(fn, fnargs, chunksize=1)  # TODO add batching
+
+    def evaluate(
+        self,
+        population: List[Individual],
+        keyx: str,
+        keyf: str,
+        target: Target,
+        reEvalKey: Optional[str] = None,
+        **kwargs,
+    ) -> None:
+        if "evaluate" not in self.patterns:
+            return evaluate(population, keyx, keyf, target, reEvalKey, executor=None, **kwargs)
+
+        return evaluate(
+            population, keyx, keyf, target, reEvalKey,
+            executor=_EvaluateWithContext(self.pool), **kwargs
+        )
 
     def foreach(
         self,
@@ -193,10 +230,11 @@ class MultiprocessingExecutor(BaseExecutor):
         elif len(population) == 0:  # initVal is provided
             return initVal
 
-        batch_size = len(population) // self.processes
-        remainder = len(population) % self.processes
+        num_batches = min(len(population), self.processes)
+        batch_size = len(population) // num_batches
+        remainder = len(population) % num_batches
         ranges = [
-            batch_size * idx + min(remainder, idx) for idx in range(self.processes)
+            batch_size * idx + min(remainder, idx) for idx in range(num_batches)
         ] + [len(population)]
         assert self.pool is not None
         intermediate_result = self.pool.starmap(
