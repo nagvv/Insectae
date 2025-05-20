@@ -9,16 +9,19 @@ from ..typing import Individual
 
 
 class ThreadingExecutor(BaseExecutor):
-    def __init__(self, processes: int, patterns: Optional[Set[str]] = None) -> None:
+    def __init__(
+        self, processes: int, chunksize: int = 1, patterns: Optional[Set[str]] = None
+    ) -> None:
         super().__init__(patterns=patterns)
         self.processes = processes
+        self.chunksize = chunksize
         self.pool = ThreadPool(processes=self.processes)
 
     def starmap(
         self, fn: Callable[..., Any], fnargs: Iterable[Tuple], **kwargs
     ) -> Iterable[Any]:
         assert self.pool is not None
-        return self.pool.starmap(fn, fnargs, chunksize=1)  # TODO add batching
+        return self.pool.starmap(fn, fnargs, chunksize=self.chunksize)
 
     @staticmethod
     def _extract_reduce(

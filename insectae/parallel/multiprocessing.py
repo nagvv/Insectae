@@ -8,15 +8,16 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 import numpy as np
 
 from ..executor import BaseExecutor
-from ..patterns import allNeighbors, foreach, neighbors, pairs, pop2ind, evaluate
+from ..patterns import allNeighbors, evaluate, foreach, neighbors, pairs, pop2ind
+from ..targets import Target
 from ..timer import timing
 from ..typing import FuncKWArgs, Individual
-from ..targets import Target
 
 
 class _ExecutorWithContext:
-    def __init__(self, pool) -> None:
+    def __init__(self, pool, chunksize: int) -> None:
         self.pool = pool
+        self.chunksize = chunksize
 
     @staticmethod
     def execute_with_context(fn: Callable[..., Any], args: Tuple) -> Any:
@@ -34,13 +35,14 @@ class _ExecutorWithContext:
         return self.pool.starmap(
             self.execute_with_context,
             zip(repeat(fn), fnargs),
-            chunksize=1,  # TODO add batching
+            chunksize=self.chunksize,
         )
 
 
 class _EvaluateWithContext:
-    def __init__(self, pool) -> None:
+    def __init__(self, pool, chunksize: int) -> None:
         self.pool = pool
+        self.chunksize = chunksize
 
     @staticmethod
     def evaluate_with_context(args: Tuple) -> Any:
@@ -53,14 +55,17 @@ class _EvaluateWithContext:
         return self.pool.starmap(
             self.evaluate_with_context,
             fnargs,
-            chunksize=1,  # TODO add batching
+            chunksize=self.chunksize,
         )
 
 
 class MultiprocessingExecutor(BaseExecutor):
-    def __init__(self, processes: int, patterns: Optional[Set[str]] = None) -> None:
+    def __init__(
+        self, processes: int, chunksize: int = 1, patterns: Optional[Set[str]] = None
+    ) -> None:
         super().__init__(patterns=patterns)
         self.processes = processes
+        self.chunksize = chunksize
         self.pool = None
 
     @staticmethod
@@ -89,7 +94,7 @@ class MultiprocessingExecutor(BaseExecutor):
         self, fn: Callable[..., Any], fnargs: Iterable[Tuple], **kwargs
     ) -> Iterable[Any]:
         assert self.pool is not None
-        return self.pool.starmap(fn, fnargs, chunksize=1)  # TODO add batching
+        return self.pool.starmap(fn, fnargs, chunksize=self.chunksize)
 
     def evaluate(
         self,
@@ -101,11 +106,18 @@ class MultiprocessingExecutor(BaseExecutor):
         **kwargs,
     ) -> None:
         if "evaluate" not in self.patterns:
-            return evaluate(population, keyx, keyf, target, reEvalKey, executor=None, **kwargs)
+            return evaluate(
+                population, keyx, keyf, target, reEvalKey, executor=None, **kwargs
+            )
 
         return evaluate(
-            population, keyx, keyf, target, reEvalKey,
-            executor=_EvaluateWithContext(self.pool), **kwargs
+            population,
+            keyx,
+            keyf,
+            target,
+            reEvalKey,
+            executor=_EvaluateWithContext(self.pool, self.chunksize),
+            **kwargs,
         )
 
     def foreach(
@@ -128,7 +140,11 @@ class MultiprocessingExecutor(BaseExecutor):
                 fnkwargs[key] = None
 
         return foreach(
-            population, op, fnkwargs, executor=_ExecutorWithContext(self.pool), **kwargs
+            population,
+            op,
+            fnkwargs,
+            executor=_ExecutorWithContext(self.pool, self.chunksize),
+            **kwargs,
         )
 
     def neighbors(
@@ -153,7 +169,7 @@ class MultiprocessingExecutor(BaseExecutor):
             op,
             permutation,
             fnkwargs,
-            executor=_ExecutorWithContext(self.pool),
+            executor=_ExecutorWithContext(self.pool, self.chunksize),
             **kwargs,
         )
 
@@ -179,7 +195,7 @@ class MultiprocessingExecutor(BaseExecutor):
             population2,
             op,
             fnkwargs,
-            executor=_ExecutorWithContext(self.pool),
+            executor=_ExecutorWithContext(self.pool, self.chunksize),
             **kwargs,
         )
 
@@ -205,7 +221,7 @@ class MultiprocessingExecutor(BaseExecutor):
             population2,
             op,
             fnkwargs,
-            executor=_ExecutorWithContext(self.pool),
+            executor=_ExecutorWithContext(self.pool, self.chunksize),
             **kwargs,
         )
 
@@ -295,6 +311,6 @@ class MultiprocessingExecutor(BaseExecutor):
             post_fnkwargs,
             key,
             mutating_op,
-            executor=_ExecutorWithContext(self.pool),
+            executor=_ExecutorWithContext(self.pool, self.chunksize),
             **kwargs,
         )
