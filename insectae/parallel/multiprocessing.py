@@ -88,7 +88,7 @@ class MultiprocessingExecutor(BaseExecutor):
             initializer=self.fill_globals,
             initargs=(context, rng.spawn(self.processes), counter),
         )
-        self.context_keys = list(context.keys())
+        self.context_keys = list(context.keys()) + ["rng"]
 
     def starmap(
         self, fn: Callable[..., Any], fnargs: Iterable[Tuple], **kwargs
