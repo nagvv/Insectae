@@ -184,11 +184,14 @@ def reducePop(
 def _call_wrap_all_neighbors(
     op: Callable[..., None],
     obj: Any,
+    fnpargs: Optional[Tuple] = None,
     fnkwargs: Optional[FuncKWArgs] = None,
 ):
+    if fnpargs is None:
+        fnpargs = ()
     if fnkwargs is None:
         fnkwargs = {}
-    return op(obj, **fnkwargs)
+    return op(obj, *fnpargs, **fnkwargs)
 
 
 @timing
@@ -218,6 +221,7 @@ def allNeighbors(
             zip(
                 repeat(op),
                 ((ind1, ind2) for _, _, ind1, ind2 in iterate()),
+                repeat(None),
                 repeat(op_fnkwargs)
             )
         )
@@ -237,6 +241,7 @@ def allNeighbors(
         zip(
             repeat(post),
             (values[i][:i] + values[i][i + 1:] for i in range(popSize)),
+            repeat(None),
             repeat(post_fnkwargs)
         )
     )
