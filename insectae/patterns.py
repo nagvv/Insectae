@@ -1,6 +1,7 @@
 import functools as ft
-from itertools import chain, repeat, count
-from typing import Any, Callable, List, Optional, Tuple
+from itertools import chain, count, repeat
+from operator import itemgetter
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -201,52 +202,68 @@ def allNeighbors(
     op_fnkwargs: FuncKWArgs,
     post: Optional[Callable[..., Any]],
     post_fnkwargs: FuncKWArgs,
-    key: str,
     mutating_op: bool = False,
+    op_getter: Union[Callable[[Individual], Any], str] = lambda x: x,
     executor=None,
 ) -> None:
-    def iterate():
+    def _iterate():
         for i, ind1 in enumerate(population):
             for j, ind2 in enumerate(population[i + 1:], i + 1):
                 yield i, j, ind1, ind2
 
+    if isinstance(op_getter, str):
+        op_getter = itemgetter(op_getter)
+
     popSize = len(population)
     values = [[None] * popSize for i in range(popSize)]
+    # if op mutates individuals it can not be parallelized
     if executor is None or mutating_op is True:
-        for i, j, ind1, ind2 in iterate():
-            values[i][j] = values[j][i] = op((ind1, ind2), **op_fnkwargs)
+        for i, j, ind1, ind2 in _iterate():
+            values[i][j] = values[j][i] = op(
+                (op_getter(ind1), op_getter(ind2)), **op_fnkwargs
+            )
     else:
         ret = executor.starmap(
             _call_wrap_all_neighbors,
             zip(
                 repeat(op),
-                ((ind1, ind2) for _, _, ind1, ind2 in iterate()),
+                ((op_getter(ind1), op_getter(ind2)) for _, _, ind1, ind2 in _iterate()),
                 repeat(None),
-                repeat(op_fnkwargs)
-            )
+                repeat(op_fnkwargs),
+            ),
         )
-        for (i, j, _, _), value in zip(iterate(), ret):
+        for (i, j, _, _), value in zip(_iterate(), ret):
             values[i][j] = values[j][i] = value
+
     if post is None:
         return
-    if executor is None:
-        for i, ind in enumerate(population):
-            ind[key] = post(values[i][:i] + values[i][i + 1:], **post_fnkwargs)
-            return
-    for i, ind in enumerate(population):
-        ind[key] = post(values[i][:i] + values[i][i + 1:], **post_fnkwargs)
 
-    ret = executor.starmap(
-        _call_wrap_all_neighbors,
-        zip(
-            repeat(post),
-            (values[i][:i] + values[i][i + 1:] for i in range(popSize)),
-            repeat(None),
-            repeat(post_fnkwargs)
+    if executor is None:
+        for idx, ind in enumerate(population):
+            post(
+                ind,
+                (p for i, p in enumerate(zip(values[idx], population)) if i != idx),
+                **post_fnkwargs,
+            )
+    else:
+        population[:] = executor.starmap(
+            _call_wrap,
+            zip(
+                repeat(post),
+                population,
+                (
+                    (
+                        [
+                            p
+                            for i, p in enumerate(zip(values[idx], population))
+                            if i != idx
+                        ],
+                    )
+                    for idx in range(popSize)
+                ),
+                repeat(post_fnkwargs),
+            ),
         )
-    )
-    for ind, value in zip(population, ret):
-        ind[key] = value
 
 
 # NOTE: signals pattern is deprecated and is soon to be deleted

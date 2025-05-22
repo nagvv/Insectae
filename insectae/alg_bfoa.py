@@ -202,7 +202,11 @@ class CalcSignals:
 
     @staticmethod
     def _op(pair, metrics, shape, time: int):
-        return shape(metrics(pair[0]["x"], pair[1]["x"]), time=time)
+        return shape(metrics(pair[0], pair[1]), time=time)
+
+    @staticmethod
+    def _reduce(ind, paired_values, reduce, key):
+        ind[key] = reduce(v for v, _ in paired_values)
 
     def __call__(
         self, population: List[Individual], key: str, env: Environment, **kwargs
@@ -215,9 +219,9 @@ class CalcSignals:
                 "shape": self.shape,
                 "time": env["time"],
             },
-            post=self.reduce,
-            post_fnkwargs={},
-            key=key,
+            op_getter="x",
+            post=self._reduce,
+            post_fnkwargs={"key": key, "reduce": self.reduce},
             **kwargs
         )
 

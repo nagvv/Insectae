@@ -63,13 +63,15 @@ class GravitationalSearchAlgorithm(Algorithm):
         ind1, ind2 = pair
         dist = metrics(ind1["x"], ind2["x"])
         mul = G * ind1["M"] * ind2["M"]
-        diff = ind2["x"] - ind1["x"]
-        return mul * diff / (dist + float_info.epsilon)
+        # this is not a complete force; the lacking directional vector will be
+        # added in the next step, i.e. 'reduce_force'
+        return mul / (dist + float_info.epsilon)
 
     @staticmethod
-    def reduce_force(forces: List, rng: np.random.Generator):
-        weights = rng.uniform(size=(len(forces),))
-        return np.sum([force * w for force, w in zip(forces, weights)], axis=0)
+    def _reduce_force(ind, paired_forces: List, rng: np.random.Generator):
+        forces = (force * (ind2["x"] - ind["x"]) for force, ind2 in paired_forces)
+        weights = rng.uniform(size=(len(paired_forces),))
+        ind["F"] = np.sum([force * w for force, w in zip(forces, weights)], axis=0)
 
     @staticmethod
     def move(x: Individual, rng: np.random.Generator):
@@ -127,9 +129,8 @@ class GravitationalSearchAlgorithm(Algorithm):
             self.population,
             op=self.compute_force,
             op_fnkwargs={"metrics": l2metrics, "G": self.env["G"]},
-            post=self.reduce_force,
+            post=self._reduce_force,
             post_fnkwargs={"rng": self.rng},
-            key="F",
             timingLabel="forces(F)",
             timer=timer,
         )

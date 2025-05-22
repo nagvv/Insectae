@@ -3,7 +3,9 @@ from typing import Any, Callable, Iterable, Tuple, Set, Optional, Dict
 
 import numpy as np
 
-from .patterns import evaluate, foreach, neighbors, pairs, pop2ind, reducePop, signals
+from .patterns import (evaluate, foreach, neighbors, pairs, pop2ind, reducePop,
+                       signals, allNeighbors)
+
 
 # FIXME/NOTE/TODO custom pattern implementations should be decorated with timing?
 class BaseExecutor:

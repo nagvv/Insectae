@@ -8,7 +8,8 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 import numpy as np
 
 from ..executor import BaseExecutor
-from ..patterns import allNeighbors, evaluate, foreach, neighbors, pairs, pop2ind
+from ..patterns import (allNeighbors, evaluate, foreach, neighbors, pairs,
+                        pop2ind)
 from ..targets import Target
 from ..timer import timing
 from ..typing import FuncKWArgs, Individual
@@ -274,8 +275,6 @@ class MultiprocessingExecutor(BaseExecutor):
         op_fnkwargs: FuncKWArgs,
         post: Optional[Callable[..., Any]],
         post_fnkwargs: FuncKWArgs,
-        key: str,
-        mutating_op: bool = False,
         **kwargs,
     ) -> None:
         if (
@@ -289,19 +288,17 @@ class MultiprocessingExecutor(BaseExecutor):
                 op_fnkwargs,
                 post,
                 post_fnkwargs,
-                key,
-                mutating_op,
                 executor=None,
                 **kwargs,
             )
 
-        for key in self.context_keys:
-            if key in op_fnkwargs:
-                op_fnkwargs[key] = None
+        for _key in self.context_keys:
+            if _key in op_fnkwargs:
+                op_fnkwargs[_key] = None
 
-        for key in self.context_keys:
-            if key in post_fnkwargs:
-                post_fnkwargs[key] = None
+        for _key in self.context_keys:
+            if _key in post_fnkwargs:
+                post_fnkwargs[_key] = None
 
         return allNeighbors(
             population,
@@ -309,8 +306,6 @@ class MultiprocessingExecutor(BaseExecutor):
             op_fnkwargs,
             post,
             post_fnkwargs,
-            key,
-            mutating_op,
             executor=_ExecutorWithContext(self.pool, self.chunksize),
             **kwargs,
         )
