@@ -1,5 +1,7 @@
-from typing import Tuple, Union
+from types import MethodType
+from typing import Tuple, Union, Callable
 
+from .executor import BaseExecutor
 from .goals import Goal, ToMax, ToMin
 from .metrics import Metrics
 from .targets import BinaryTarget, RealTarget
@@ -63,3 +65,18 @@ def from_ioh_problem(
         raise TypeError("unsupported type of a problem")
 
     return target, goal, metrics
+
+
+def wrap_executor_evaluate(
+    executor: BaseExecutor,
+    new_evaluate: Callable,
+    orig_evaluate_field: str = "_orig_evaluate"
+):
+    setattr(executor, orig_evaluate_field, executor.evaluate)
+    executor.evaluate = MethodType(new_evaluate, executor)
+
+    def restore():
+        executor.evaluate = getattr(executor, orig_evaluate_field)
+        delattr(executor, orig_evaluate_field)
+
+    return restore
