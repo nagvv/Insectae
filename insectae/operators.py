@@ -1,4 +1,5 @@
 import copy
+from functools import partial
 from operator import itemgetter
 from typing import Any, Callable, Dict, List, Tuple, Union
 
@@ -75,7 +76,7 @@ class ShuffledNeighbors:
         self.op = op
         self.args_from_env_getter = args_from_env_getter
         if self.args_from_env_getter is None:
-            self.args_from_env_getter = lambda env: get_args_from_env(self.op, env)
+            self.args_from_env_getter = partial(get_args_from_env, self.op)
 
     def __call__(
         self, population: List[Individual], key: str, env: Environment, **kwargs
@@ -129,7 +130,7 @@ class Selected:
         self.op = op
         self.args_from_env_getter = args_from_env_getter
         if self.args_from_env_getter is None:
-            self.args_from_env_getter = lambda env: get_args_from_env(self.op, env)
+            self.args_from_env_getter = partial(get_args_from_env, self.op)
 
     def __call__(
         self, population: List[Individual], key: str, env: Environment, **kwargs
