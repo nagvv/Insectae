@@ -1,10 +1,11 @@
-from typing import Callable, Dict, List, Optional, Union, Sequence
+from typing import Callable, Dict, List, Optional, Sequence, Union
+
 from numpy.random import Generator, default_rng
 
+from .executor import BaseExecutor
 from .goals import Goal, ToMin, getGoal
 from .targets import Target
-from .typing import Individual, Environment
-from .executor import BaseExecutor
+from .typing import Environment, Individual
 
 
 class Algorithm:
@@ -17,7 +18,7 @@ class Algorithm:
         opInit: Optional[Callable[..., None]] = None,
         env: Optional[Environment] = None,
         executor: Optional[BaseExecutor] = None,
-        rng_seed: Union[None, int, Sequence[int], Generator] = None
+        rng_seed: Union[None, int, Sequence[int], Generator] = None,
     ) -> None:
         self.target = target
         self.goal = goal if isinstance(goal, Goal) else getGoal(goal)
@@ -33,7 +34,7 @@ class Algorithm:
             rng=self.rng,
         )
 
-        self.population: List[Individual] = []  # FIXME, from argument?
+        self.population: List[Individual] = []
         self.additionalProcedures: Dict[str, List[Callable[..., None]]] = {
             "start": [],
             "enter": [],
@@ -52,7 +53,7 @@ class Algorithm:
         for proc in procedures:
             proc(self.population, self.env)
 
-    def checkKey(self, key: str) -> str:  # FIXME make internal?
+    def checkKey(self, key: str) -> str:
         if key[0] in "*&":
             keymap = {"*": "solutionValueLabel", "&": "solutionLabel"}
             self.env[keymap[key[0]]] = key[1:]
@@ -61,15 +62,26 @@ class Algorithm:
 
     def run(self) -> None:
         self.start()
+        self.runAdds("start")
         while not self.stop(self.env):
             self.enter()
+            self.runAdds("enter")
             self.runGeneration()
             self.exit()
+            self.runAdds("exit", reverse=True)
         self.finish()
+        self.runAdds("finish", reverse=True)
 
     def init_attributes(self, envAttrs: str, indAttrs: str) -> None:
         # environment
-        keys = ["target", "goal", "time", "popSize", "rng", "executor"] + envAttrs.split()
+        keys = [
+            "target",
+            "goal",
+            "time",
+            "popSize",
+            "rng",
+            "executor",
+        ] + envAttrs.split()
         self.env.update({key: None for key in keys})
         for key in keys:
             if key in self.__dict__:
@@ -80,7 +92,6 @@ class Algorithm:
         keys = list(map(self.checkKey, indAttrs.split()))
         ind = {key: None for key in keys}
         self.population = [ind.copy() for _ in range(self.popSize)]
-        self.runAdds("start")
 
     def start(self) -> None:
         self.init_attributes("", "")
@@ -88,13 +99,12 @@ class Algorithm:
     def enter(self) -> None:
         assert isinstance(self.env["time"], int)
         self.env["time"] += 1
-        self.runAdds("enter")
 
     def runGeneration(self) -> None:
         pass
 
     def exit(self) -> None:
-        self.runAdds("exit", reverse=True)
+        pass
 
     def finish(self) -> None:
-        self.runAdds("finish", reverse=True)
+        pass
