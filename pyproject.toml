@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "insectae"
 dynamic = ["version"]
 requires-python = ">=3.10"
-dependencies = ["numpy", "matplotlib", "mpi4py", "ray"]
+dependencies = ["numpy", "matplotlib"]
 
 [project.optional-dependencies]
 
