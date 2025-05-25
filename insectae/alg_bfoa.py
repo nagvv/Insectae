@@ -22,7 +22,7 @@ class BacterialForagingAlgorithm(Algorithm):
         self,
         vel: Evaluable[float],
         gamma: Evaluable[float],
-        probRotate: Evaluable[float],
+        probRotate: Evaluable[Tuple[float, float]],
         mu: float,
         opSelect: Callable[..., None],
         opDisperse: Callable[..., None],
