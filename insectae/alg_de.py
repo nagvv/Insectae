@@ -1,8 +1,9 @@
-import numpy as np
 from typing import Any, Callable, Dict, List
 
+import numpy as np
+
 from .alg_base import Algorithm
-from .common import evalf, samplex, get_args_from_env
+from .common import evalf, get_args_from_env, samplex
 from .goals import Goal
 from .typing import Environment, Evaluable, Individual
 
@@ -13,7 +14,7 @@ class DifferentialEvolution(Algorithm):
         opMakeProbe: Callable[..., None],
         opCrossover: Callable[..., None],
         opSelect: Callable[..., None],
-        **kwargs
+        **kwargs,
     ) -> None:
         self.opMakeProbe = opMakeProbe
         self.opCrossover = opCrossover
@@ -51,10 +52,7 @@ class DifferentialEvolution(Algorithm):
             self.probes,
             self.population,
             self.opCrossover,
-            fnkwargs={
-                "key": "x",
-                **get_args_from_env(self.opCrossover, self.env)
-            },
+            fnkwargs={"key": "x", **get_args_from_env(self.opCrossover, self.env)},
             timingLabel="crossover",
             timer=timer,
         )
@@ -70,10 +68,7 @@ class DifferentialEvolution(Algorithm):
             self.population,
             self.probes,
             self.opSelect,
-            fnkwargs={
-                "key": "f",
-                **get_args_from_env(self.opSelect, self.env)
-            },
+            fnkwargs={"key": "f", **get_args_from_env(self.opSelect, self.env)},
             timingLabel="select",
             timer=timer,
         )
@@ -99,7 +94,7 @@ class ProbeClassic:
         keyf: str,
         time: int,
         goal: Goal,
-        rng: np.random.Generator
+        rng: np.random.Generator,
     ) -> None:
         weight = evalf(self.weight, time, rng)
         S = samplex(len(population), 3, [index], rng)
@@ -120,7 +115,7 @@ class ProbeBest:
         keyf: str,
         time: int,
         goal: Goal,
-        rng: np.random.Generator
+        rng: np.random.Generator,
     ) -> None:
         weight = evalf(self.weight, time, rng)
         i = argbestDE(population, keyf, goal)
@@ -142,7 +137,7 @@ class ProbeCur2Best:
         keyf: str,
         time: int,
         goal: Goal,
-        rng: np.random.Generator
+        rng: np.random.Generator,
     ) -> None:
         weight = evalf(self.weight, time, rng)
         i = argbestDE(population, keyf, goal)
@@ -164,7 +159,7 @@ class ProbeBest2:
         keyf: str,
         time: int,
         goal: Goal,
-        rng: np.random.Generator
+        rng: np.random.Generator,
     ) -> None:
         weight = evalf(self.weight, time, rng)
         i = argbestDE(population, keyf, goal)
@@ -186,7 +181,7 @@ class probeRandom5:
         keyf: str,
         time: int,
         goal: Goal,
-        rng: np.random.Generator
+        rng: np.random.Generator,
     ) -> None:
         weight = evalf(self.weight, time, rng)
         S = samplex(len(population), 5, [index], rng)

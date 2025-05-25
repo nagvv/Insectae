@@ -9,7 +9,7 @@ class GeneticAlgorithm(Algorithm):
         opSelect: Callable[..., None],
         opCrossover: Callable[..., None],
         opMutate: Callable[..., None],
-        **kwargs
+        **kwargs,
     ) -> None:
         self.opSelect = opSelect
         self.opCrossover = opCrossover

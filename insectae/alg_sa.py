@@ -4,8 +4,8 @@ from numpy import exp, random
 
 from .alg_base import Algorithm
 from .common import evalf
-from .operators import copyAttribute
 from .goals import Goal
+from .operators import copyAttribute
 from .typing import Environment, Evaluable, Individual
 
 

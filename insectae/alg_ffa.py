@@ -3,8 +3,8 @@ from typing import Callable, List, Optional
 import numpy as np
 
 from .alg_base import Algorithm
-from .operators import FillAttribute, copyAttribute, simpleMove
 from .goals import Goal
+from .operators import FillAttribute, copyAttribute, simpleMove
 from .targets import Target
 from .typing import Environment, Individual
 
@@ -18,7 +18,7 @@ class FireflyAlgorithm(Algorithm):
         theta: float,  # randomness reduction factor
         alphabest: Optional[float] = None,  # randomization coefficient for best
         opLimitVel: Callable[..., None] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         self.opLimitVel = opLimitVel
         self.alpha = alpha
@@ -39,7 +39,9 @@ class FireflyAlgorithm(Algorithm):
             self.opInit,
             {"target": self.target, "key": "x", "env": self.env},
         )
-        self.executor.evaluate(self.population, keyx="x", keyf="val", target=self.target)
+        self.executor.evaluate(
+            self.population, keyx="x", keyf="val", target=self.target
+        )
         self.executor.foreach(
             self.population,
             FillAttribute(np.zeros((self.popSize, 1 + self.target.dimension))),
@@ -52,9 +54,7 @@ class FireflyAlgorithm(Algorithm):
         )
 
     @staticmethod
-    def op_p2i(
-        ind: Individual, pop: List[Individual], index: int
-    ) -> None:
+    def op_p2i(ind: Individual, pop: List[Individual], index: int) -> None:
         for idx in range(len(pop)):
             ind["neighbors"][idx, 0] = pop[idx]["val"]
             ind["neighbors"][idx, 1:] = pop[idx]["x"]

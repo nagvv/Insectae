@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict, Mapping, TypeVar, Union, List
+from typing import Any, Callable, Dict, List, Mapping, TypeVar, Union
+
 import numpy as np
 
 # from typing import TYPE_CHECKING

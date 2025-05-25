@@ -1,5 +1,5 @@
 from types import MethodType
-from typing import Tuple, Union, Callable
+from typing import Callable, Tuple, Union
 
 from .executor import BaseExecutor
 from .goals import Goal, ToMax, ToMin
@@ -70,7 +70,7 @@ def from_ioh_problem(
 def wrap_executor_evaluate(
     executor: BaseExecutor,
     new_evaluate: Callable,
-    orig_evaluate_field: str = "_orig_evaluate"
+    orig_evaluate_field: str = "_orig_evaluate",
 ):
     setattr(executor, orig_evaluate_field, executor.evaluate)
     executor.evaluate = MethodType(new_evaluate, executor)

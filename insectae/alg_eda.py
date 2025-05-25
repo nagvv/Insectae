@@ -1,21 +1,18 @@
-from typing import Callable
 from functools import partial
-import numpy as np
 from operator import itemgetter
+from typing import Callable
+
+import numpy as np
 from numpy.typing import NDArray
 
 from .alg_base import Algorithm
-from .typing import Individual, Evaluable, Environment
-from .targets import BinaryTarget
 from .common import evalf
+from .targets import BinaryTarget
+from .typing import Environment, Evaluable, Individual
 
 
 class UnivariateMarginalDistributionAlgorithm(Algorithm):
-    def __init__(
-        self,
-        opSelect: Callable[..., None],
-        **kwargs
-    ) -> None:
+    def __init__(self, opSelect: Callable[..., None], **kwargs) -> None:
         self.opSelect = opSelect
         super().__init__(**kwargs)
         self.target: BinaryTarget
@@ -49,13 +46,16 @@ class UnivariateMarginalDistributionAlgorithm(Algorithm):
             timingLabel="select",
             timer=timer,
         )
-        probs = self.executor.reducePop(
-            population=self.population,
-            extract=self._extract,
-            reduce=np.add,
-            timingLabel="reduce",
-            timer=timer,
-        ) / self.popSize
+        probs = (
+            self.executor.reducePop(
+                population=self.population,
+                extract=self._extract,
+                reduce=np.add,
+                timingLabel="reduce",
+                timer=timer,
+            )
+            / self.popSize
+        )
         self.executor.foreach(
             self.population,
             self.generate,
@@ -82,7 +82,7 @@ class PopulationBasedIncrementalLearning(Algorithm):
         p_max: Evaluable[float],
         p_min: Evaluable[float],
         learning_rate: Evaluable[float],
-        **kwargs
+        **kwargs,
     ) -> None:
         self.probMutate = probMutate
         self._n_best = n_best
@@ -138,7 +138,7 @@ class PopulationBasedIncrementalLearning(Algorithm):
         )
         n_worst = evalf(self._n_worst, self.env["time"], self.rng)
         probs = self.executor.reducePop(
-            population=self.population[self.popSize - n_worst:],
+            population=self.population[self.popSize - n_worst :],
             extract=self._extract,
             reduce=partial(self._reduce_minus, learning_rate=learning_rate),
             initVal=probs,
@@ -165,4 +165,3 @@ class PopulationBasedIncrementalLearning(Algorithm):
             timer=timer,
             target=self.target,
         )
-

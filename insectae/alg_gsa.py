@@ -1,8 +1,8 @@
+from functools import partial
 from math import exp
 from operator import add
 from sys import float_info
 from typing import List
-from functools import partial
 
 import numpy as np
 
@@ -19,7 +19,7 @@ class GravitationalSearchAlgorithm(Algorithm):
         g_decay_stop_it: int,
         alpha: float,
         delta: Evaluable[float],
-        **kwargs
+        **kwargs,
     ) -> None:
         self.g_init = g_init
         self.g_decay_stop_it = g_decay_stop_it

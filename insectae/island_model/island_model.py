@@ -55,7 +55,7 @@ class AddMigration:
             range(len(population)),
             key=env["goal"].get_cmp_to_key(lambda v: population[v][keyf]),
         )
-        selected = [population[idx] for idx in sorted_idxs[:self._migration_size]]
+        selected = [population[idx] for idx in sorted_idxs[: self._migration_size]]
         self._comm.send(selected, env["im_topo_targets"], env)
         received = self._comm.recv(env)
         # use the last received data from each sender
@@ -68,11 +68,11 @@ class AddMigration:
             to_insert.extend(data)
         # select the best from the received data and the current worsts
         to_insert.extend(
-            [population[idx] for idx in sorted_idxs[-self._migration_size:]]
+            [population[idx] for idx in sorted_idxs[-self._migration_size :]]
         )
         to_insert.sort(key=env["goal"].get_cmp_to_key(itemgetter(keyf)))
         for idx, ind in zip(
-            sorted_idxs[-self._migration_size:], to_insert[:self._migration_size]
+            sorted_idxs[-self._migration_size :], to_insert[: self._migration_size]
         ):
             population[idx] = ind
         env[self.LAST_MIGRATED] = 0
@@ -129,7 +129,7 @@ class IslandModel:
         communication: Communication,
         topology: Union[str, Dict[int, List[int]]] = "circle",
         executor: Any,
-        **kwargs
+        **kwargs,
     ) -> None:
         self._executor = executor
         self._islands = make_island_model(

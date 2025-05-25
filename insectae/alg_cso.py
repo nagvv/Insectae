@@ -1,11 +1,11 @@
-from typing import Tuple, Any
+from typing import Any, Tuple
 
 import numpy as np
 
 from .alg_base import Algorithm
 from .common import evalf
-from .operators import ShuffledNeighbors
 from .goals import Goal
+from .operators import ShuffledNeighbors
 from .targets import RandomRealVector, RealTarget
 from .typing import Evaluable, Individual
 
@@ -34,7 +34,7 @@ class CompetitiveSwarmOptimizer(Algorithm):
         avg_x: Any,
         rng: np.random.Generator,
         twoway: bool,
-        time: int
+        time: int,
     ) -> None:
         assert twoway is True
         ind1, ind2 = pair
@@ -73,13 +73,16 @@ class CompetitiveSwarmOptimizer(Algorithm):
 
     def runGeneration(self) -> None:
         timer = self.env.get("timer")
-        self.env["avg_x"] = self.executor.reducePop(
-            population=self.population,
-            extract=self._extract,
-            reduce=np.add,
-            timingLabel="reduce",
-            timer=timer,
-        ) / self.popSize
+        self.env["avg_x"] = (
+            self.executor.reducePop(
+                population=self.population,
+                extract=self._extract,
+                reduce=np.add,
+                timingLabel="reduce",
+                timer=timer,
+            )
+            / self.popSize
+        )
         self.compete(
             self.population,
             key="f",

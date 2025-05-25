@@ -208,7 +208,7 @@ def allNeighbors(
 ) -> None:
     def _iterate():
         for i, ind1 in enumerate(population):
-            for j, ind2 in enumerate(population[i + 1:], i + 1):
+            for j, ind2 in enumerate(population[i + 1 :], i + 1):
                 yield i, j, ind1, ind2
 
     if isinstance(op_getter, str):

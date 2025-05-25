@@ -5,10 +5,16 @@ from numpy.typing import NDArray
 
 from .alg_base import Algorithm
 from .common import evalf, l2metrics
-from .operators import copyAttribute, FillAttribute, simpleMove
 from .goals import Goal
-from .targets import Target
-from .typing import Evaluable, Individual, Environment
+from .operators import FillAttribute, copyAttribute, simpleMove
+from .typing import Environment, Evaluable, Individual
+
+
+def _randomDirectedVector(
+    dim: int, length: float, rng: np.random.Generator
+) -> NDArray[np.float64]:
+    vec = rng.normal(loc=0.0, scale=1.0, size=dim)
+    return vec * (length / np.linalg.norm(vec))
 
 
 class BacterialForagingAlgorithm(Algorithm):
@@ -21,7 +27,7 @@ class BacterialForagingAlgorithm(Algorithm):
         opSelect: Callable[..., None],
         opDisperse: Callable[..., None],
         opSignals: Callable[..., None],
-        **kwargs
+        **kwargs,
     ) -> None:
         self.vel = vel
         self.gamma = gamma
@@ -36,7 +42,7 @@ class BacterialForagingAlgorithm(Algorithm):
     def initVel(
         ind: Individual, dim: int, vel: float, rng: np.random.Generator
     ) -> None:
-        ind["v"] = randomDirectedVector(dim, vel, rng)
+        ind["v"] = _randomDirectedVector(dim, vel, rng)
 
     @staticmethod
     def rotate(
@@ -49,8 +55,13 @@ class BacterialForagingAlgorithm(Algorithm):
     ) -> None:
         new_is_better = goal.isBetter(ind["fNew"], ind["f"])
         r = rng.random()
-        if new_is_better and r < probRotate[0] or not new_is_better and r < probRotate[1]:
-            ind["v"] = randomDirectedVector(dim, vel, rng)
+        if (
+            new_is_better
+            and r < probRotate[0]
+            or not new_is_better
+            and r < probRotate[1]
+        ):
+            ind["v"] = _randomDirectedVector(dim, vel, rng)
 
     @staticmethod
     def updateF(ind: Individual, gamma: float) -> None:
@@ -66,7 +77,7 @@ class BacterialForagingAlgorithm(Algorithm):
                 "target": self.target,
                 "key": "x",
                 "env": self.env,
-            }
+            },
         )
         self.executor.evaluate(self.population, keyx="x", keyf="f", target=self.target)
         self.executor.foreach(
@@ -84,7 +95,7 @@ class BacterialForagingAlgorithm(Algorithm):
             {
                 "keyFrom": "f",
                 "keyTo": "fTotal",
-            }
+            },
         )
         self.executor.foreach(
             self.population,
@@ -92,7 +103,7 @@ class BacterialForagingAlgorithm(Algorithm):
             {
                 "key": "fs",
                 "env": self.env,
-            }
+            },
         )
 
     def runGeneration(self) -> None:
@@ -109,14 +120,15 @@ class BacterialForagingAlgorithm(Algorithm):
             timer=timer,
         )
         self.executor.evaluate(
-            self.population, keyx="x", keyf="fNew", timingLabel="evaluate", timer=timer, target=self.target
+            self.population,
+            keyx="x",
+            keyf="fNew",
+            timingLabel="evaluate",
+            timer=timer,
+            target=self.target,
         )
         self.opSignals(
-            self.population,
-            key="fs",
-            env=self.env,
-            timingLabel="signals",
-            timer=timer
+            self.population, key="fs", env=self.env, timingLabel="signals", timer=timer
         )
         self.executor.foreach(
             self.population,
@@ -154,7 +166,7 @@ class BacterialForagingAlgorithm(Algorithm):
             key="fTotal",
             env=self.env,
             timingLabel="select",
-            timer=timer
+            timer=timer,
         )
         self.executor.foreach(
             self.population,
@@ -169,15 +181,9 @@ class BacterialForagingAlgorithm(Algorithm):
         )
 
 
-# TODO: make it consistent with other helper functions
-def randomDirectedVector(dim: int, length: float, rng: np.random.Generator) -> NDArray[np.float64]:
-    vec = rng.normal(loc=0.0, scale=1.0, size=dim)
-    return vec * (length / np.linalg.norm(vec))
-
-
 class NoSignals:
     def __call__(
-        self, population: List[Individual], key: str, env: Environment,  **kwargs
+        self, population: List[Individual], key: str, env: Environment, **kwargs
     ) -> None:
         pass
 
@@ -223,7 +229,7 @@ class CalcSignals:
             op_getter="x",
             post=self._reduce,
             post_fnkwargs={"key": key, "reduce": self.reduce},
-            **kwargs
+            **kwargs,
         )
 
 

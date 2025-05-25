@@ -16,7 +16,7 @@ class BeesAlgorithm(Algorithm):
         opLocal: Callable[..., None],
         opGlobal: Callable[..., None],
         opProbs: Callable[[int], NDArray[np.float64]],
-        **kwargs
+        **kwargs,
     ) -> None:
         self.beesNum = beesNum
         self.opLocal = opLocal
@@ -40,7 +40,9 @@ class BeesAlgorithm(Algorithm):
         self.executor.evaluate(self.population, keyx="x", keyf="f", target=self.target)
 
     @staticmethod
-    def updatePlace(place: Individual, bees: List[Individual], index: int, goal: Goal) -> None:
+    def updatePlace(
+        place: Individual, bees: List[Individual], index: int, goal: Goal
+    ) -> None:
         for bee in bees:
             if bee["_rank"] == place["_rank"] and goal.isBetter(bee["f"], place["f"]):
                 place["f"] = bee["f"]
@@ -52,10 +54,7 @@ class BeesAlgorithm(Algorithm):
             self.bees,
             self.population,
             self.opFly,
-            fnkwargs={
-                "key": "x",
-                "env": self.env
-            },
+            fnkwargs={"key": "x", "env": self.env},
             timingLabel="fly",
             timer=timer,
         )

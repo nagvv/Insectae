@@ -2,8 +2,8 @@ from typing import Any, Callable, Optional, Tuple, Union
 
 import numpy as np
 
-from .typing import Individual, Environment
 from .metrics import Metrics
+from .typing import Environment, Individual
 
 
 class Target:
@@ -51,11 +51,7 @@ class BinaryTarget(Target):
 # TODO: consider adding base class for these random generators
 class RandomBinaryVector:
     def __call__(
-        self,
-        ind: Individual,
-        target: Target,
-        key: str,
-        env: Environment
+        self, ind: Individual, target: Target, key: str, env: Environment
     ) -> None:
         dim = target.dimension
         ind[key] = env["rng"].integers(2, size=dim)
@@ -87,11 +83,7 @@ class RandomRealVector:
             self.bounds = bounds  # either tuple or None
 
     def __call__(
-        self,
-        ind: Individual,
-        target: RealTarget,
-        key: str,
-        env: Environment
+        self, ind: Individual, target: RealTarget, key: str, env: Environment
     ) -> None:
         dim = target.dimension
         if self.bounds is not None:
@@ -120,7 +112,7 @@ class RandomPermutation:
         ind: Individual,
         target: Target,
         key: str,
-        env: Optional[Environment] = None
+        env: Optional[Environment] = None,
     ) -> None:
         dim = target.dimension
         ind[key] = np.array(list(range(dim)))

@@ -28,7 +28,7 @@ class ExpCool:
         if gen > self.gen:
             self.gen = gen
             self.x *= self.q
-        return self.x  # TODO: добавить возможность работы со списками или кортежами
+        return self.x
 
 
 class HypCool:

@@ -1,14 +1,15 @@
 from functools import partial
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .alg_base import Algorithm
 from .common import Evaluable, evalf
 from .goals import Goal
 from .operators import copyAttribute, simpleMove
 from .targets import RandomRealVector, RealTarget
-from .typing import Environment, Individual
+from .typing import Individual
 
 
 class ParticleSwarmOptimization(Algorithm):
@@ -31,7 +32,7 @@ class ParticleSwarmOptimization(Algorithm):
     @staticmethod
     def updateVel(
         ind: Individual,
-        g: Any,  # FIXME: position type
+        g: NDArray,
         gamma: float,
         alphabeta: Tuple[float, float],
     ) -> None:
@@ -79,7 +80,6 @@ class ParticleSwarmOptimization(Algorithm):
 
     def runGeneration(self) -> None:
         timer = self.env.get("timer")
-        # TODO add additkwargs, for decorators purpose
         self.env["g"] = self.executor.reducePop(
             self.population,
             self._extract,
