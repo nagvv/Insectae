@@ -63,12 +63,17 @@ class _EvaluateWithContext:
 # greatly reduces performance
 class MPIExecutor(BaseExecutor):
     def __init__(
-        self, processes: int, chunksize: int = 1, patterns: Optional[Set[str]] = None
+        self,
+        processes: int,
+        chunksize: Optional[int] = None,
+        patterns: Optional[Set[str]] = None,
+        mpi_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(patterns=patterns)
         self.processes = processes
-        self.chunksize = chunksize
+        self.chunksize = chunksize or 1
         self.pool = None
+        self.mpi_kwargs = mpi_kwargs or {}
 
     @staticmethod
     def fill_globals(context: Dict[str, Any], rngs: List[np.random.Generator]) -> None:
@@ -82,6 +87,7 @@ class MPIExecutor(BaseExecutor):
             max_workers=self.processes,
             initializer=self.fill_globals,
             initargs=(context, rng.spawn(self.processes)),
+            **self.mpi_kwargs,
         )
         self.context_keys = list(context.keys()) + ["rng"]
 

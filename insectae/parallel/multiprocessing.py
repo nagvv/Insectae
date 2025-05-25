@@ -62,7 +62,10 @@ class _EvaluateWithContext:
 
 class MultiprocessingExecutor(BaseExecutor):
     def __init__(
-        self, processes: int, chunksize: int = 1, patterns: Optional[Set[str]] = None
+        self,
+        processes: int,
+        chunksize: Optional[int] = None,
+        patterns: Optional[Set[str]] = None,
     ) -> None:
         super().__init__(patterns=patterns)
         self.processes = processes
