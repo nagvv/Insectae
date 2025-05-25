@@ -6,22 +6,23 @@ import numpy as np
 from .patterns import (allNeighbors, evaluate, foreach, neighbors, pairs,
                        pop2ind, reducePop, signals)
 
+_known_patterns = {
+    "allNeighbors",
+    "evaluate",
+    "foreach",
+    "neighbors",
+    "pairs",
+    "pop2ind",
+    "reducePop",
+    "signals",
+}
+
 
 class BaseExecutor:
     def __init__(self, patterns: Optional[Set[str]] = None, *args, **kwargs) -> None:
-        self.patterns = (
-            patterns
-            if patterns is not None
-            else {
-                "evaluate",
-                "foreach",
-                "neighbors",
-                "pairs",
-                "pop2ind",
-                "reducePop",
-                "allNeighbors",
-            }
-        )
+        self.patterns = patterns or {"evaluate"}
+        if not self.patterns <= _known_patterns:
+            raise ValueError("unknown pattern name is provided")
         super().__init__(*args, **kwargs)
 
     def init(self, context: Dict[str, Any], rng: np.random.Generator) -> None:
