@@ -39,7 +39,7 @@ class GravitationalSearchAlgorithm(Algorithm):
         self.executor.evaluate(
             population=self.population, keyx="x", keyf="f", target=self.target
         )
-        delta = evalf(self.delta, self.env["time"])
+        delta = evalf(self.delta, self.env["time"], self.rng)
         vel = delta * (self.target.bounds[1] - self.target.bounds[0])
         self.executor.foreach(
             self.population,

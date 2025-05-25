@@ -60,7 +60,7 @@ class ParticleSwarmOptimization(Algorithm):
         self.executor.foreach(
             self.population, copyAttribute, {"keyFrom": "f", "keyTo": "fNew"}
         )
-        delta = evalf(self.delta, self.env["time"])
+        delta = evalf(self.delta, self.env["time"], self.rng)
         vel = delta * (self.target.bounds[1] - self.target.bounds[0])
         self.executor.foreach(
             self.population,
@@ -92,8 +92,8 @@ class ParticleSwarmOptimization(Algorithm):
             self.updateVel,
             {
                 "g": self.env["g"],
-                "gamma": evalf(self.gamma, self.env["time"]),
-                "alphabeta": evalf(self.alphabeta, self.env["time"]),
+                "gamma": evalf(self.gamma, self.env["time"], self.rng),
+                "alphabeta": evalf(self.alphabeta, self.env["time"], self.rng),
             },
             timingLabel="updatevel",
             timer=timer,
@@ -105,6 +105,7 @@ class ParticleSwarmOptimization(Algorithm):
                 {
                     "key": "v",
                     "time": self.env["time"],
+                    "rng": self.rng,
                 },
                 timingLabel="limitvel",
                 timer=timer,
@@ -138,28 +139,22 @@ class ParticleSwarmOptimization(Algorithm):
 
 
 class RandomAlphaBeta:
-    def __init__(
-        self, alpha: float, beta: float, rng: Optional[np.random.Generator] = None
-    ) -> None:
+    def __init__(self, alpha: float, beta: float) -> None:
         self.alpha = alpha
         self.beta = beta
-        self.rng = rng if rng is not None else np.random.default_rng()
 
-    def __call__(self, time: int) -> Tuple[float, float]:
-        # TODO: use rng from algorithm, may need changes in evalf
-        a = self.rng.random() * self.alpha
-        b = self.rng.random() * self.beta
+    def __call__(self, time: int, rng: np.random.Generator) -> Tuple[float, float]:
+        a = rng.random() * self.alpha
+        b = rng.random() * self.beta
         return a, b
 
 
 class LinkedAlphaBeta:
-    def __init__(self, total: float, rng: Optional[np.random.Generator] = None) -> None:
+    def __init__(self, total: float) -> None:
         self.total = total
-        self.rng = rng if rng is not None else np.random.default_rng()
 
-    def __call__(self, time: int) -> Tuple[float, float]:
-        # TODO: use rng from algorithm, may need changes in evalf
-        alpha = self.rng.random() * self.total
+    def __call__(self, time: int, rng: np.random.Generator) -> Tuple[float, float]:
+        alpha = rng.random() * self.total
         beta = self.total - alpha
         return alpha, beta
 
@@ -168,8 +163,10 @@ class MaxAmplitude:
     def __init__(self, amax: Evaluable[float]) -> None:
         self.amax = amax
 
-    def __call__(self, ind: Individual, key: str, time: int) -> None:
-        amax = evalf(self.amax, time)
+    def __call__(
+        self, ind: Individual, key: str, time: int, rng: np.random.Generator
+    ) -> None:
+        amax = evalf(self.amax, time, rng)
         a = np.linalg.norm(ind[key])
         if a > amax:
             ind[key] *= amax / a
@@ -179,6 +176,8 @@ class FixedAmplitude:
     def __init__(self, ampl: Evaluable[float]) -> None:
         self.ampl = ampl
 
-    def __call__(self, ind: Individual, key: str, time: int):
-        ampl = evalf(self.ampl, time)
+    def __call__(
+        self, ind: Individual, key: str, time: int, rng: np.random.Generator
+    ) -> None:
+        ampl = evalf(self.ampl, time, rng)
         ind[key] *= ampl / np.linalg.norm(ind[key])

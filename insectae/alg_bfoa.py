@@ -74,7 +74,7 @@ class BacterialForagingAlgorithm(Algorithm):
             self.initVel,
             {
                 "dim": self.target.dimension,
-                "vel": evalf(self.vel, self.env["time"]),
+                "vel": evalf(self.vel, self.env["time"], self.rng),
                 "rng": self.rng,
             },
         )
@@ -133,8 +133,8 @@ class BacterialForagingAlgorithm(Algorithm):
             self.population,
             self.rotate,
             {
-                "vel": evalf(self.vel, self.env["time"]),
-                "probRotate": evalf(self.probRotate, self.env["time"]),
+                "vel": evalf(self.vel, self.env["time"], self.rng),
+                "probRotate": evalf(self.probRotate, self.env["time"], self.rng),
                 "goal": self.goal,
                 "dim": self.target.dimension,
                 "rng": self.rng,
@@ -145,7 +145,7 @@ class BacterialForagingAlgorithm(Algorithm):
         self.executor.foreach(
             self.population,
             self.updateF,
-            {"gamma": evalf(self.gamma, self.env["time"])},
+            {"gamma": evalf(self.gamma, self.env["time"], self.rng)},
             timingLabel="updatef",
             timer=timer,
         )
@@ -201,8 +201,8 @@ class CalcSignals:
         self.metrics = metrics
 
     @staticmethod
-    def _op(pair, metrics, shape, time: int):
-        return shape(metrics(pair[0], pair[1]), time=time)
+    def _op(pair, metrics, shape, time: int, rng: np.random.Generator):
+        return shape(metrics(pair[0], pair[1]), time=time, rng=rng)
 
     @staticmethod
     def _reduce(ind, paired_values, reduce, key):
@@ -218,6 +218,7 @@ class CalcSignals:
                 "metrics": self.metrics,
                 "shape": self.shape,
                 "time": env["time"],
+                "rng": env["rng"],
             },
             op_getter="x",
             post=self._reduce,
@@ -231,7 +232,7 @@ class ShapeClustering:
         self.d = d
         self.goal = 1 if goal == "min" else -1
 
-    def __call__(self, x: float, time: int) -> float:
-        d = evalf(self.d, time)
+    def __call__(self, x: float, time: int, rng: np.random.Generator) -> float:
+        d = evalf(self.d, time, rng)
         x2 = (x / d) ** 2
         return self.goal * (2 * np.exp(-x2) - 3 * np.exp(-4 * x2))

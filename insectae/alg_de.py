@@ -101,7 +101,7 @@ class ProbeClassic:
         goal: Goal,
         rng: np.random.Generator
     ) -> None:
-        weight = evalf(self.weight, time)
+        weight = evalf(self.weight, time, rng)
         S = samplex(len(population), 3, [index], rng)
         a, b, c = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx])
@@ -122,7 +122,7 @@ class ProbeBest:
         goal: Goal,
         rng: np.random.Generator
     ) -> None:
-        weight = evalf(self.weight, time)
+        weight = evalf(self.weight, time, rng)
         i = argbestDE(population, keyf, goal)
         sample = [i] + samplex(len(population), 2, [index, i], rng)
         a, b, c = [population[i] for i in sample]
@@ -144,7 +144,7 @@ class ProbeCur2Best:
         goal: Goal,
         rng: np.random.Generator
     ) -> None:
-        weight = evalf(self.weight, time)
+        weight = evalf(self.weight, time, rng)
         i = argbestDE(population, keyf, goal)
         S = [index, i] + samplex(len(population), 2, [index, i], rng)
         cur, a, b, c = [population[i] for i in S]
@@ -166,7 +166,7 @@ class ProbeBest2:
         goal: Goal,
         rng: np.random.Generator
     ) -> None:
-        weight = evalf(self.weight, time)
+        weight = evalf(self.weight, time, rng)
         i = argbestDE(population, keyf, goal)
         S = [i] + samplex(len(population), 4, [index, i], rng)
         a, b, c, d, e = [population[i] for i in S]
@@ -188,7 +188,7 @@ class probeRandom5:
         goal: Goal,
         rng: np.random.Generator
     ) -> None:
-        weight = evalf(self.weight, time)
+        weight = evalf(self.weight, time, rng)
         S = samplex(len(population), 5, [index], rng)
         a, b, c, d, e = [population[i] for i in S]
         ind[keyx] = a[keyx] + weight * (b[keyx] - c[keyx] + d[keyx] - e[keyx])

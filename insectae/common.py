@@ -10,9 +10,9 @@ from .typing import Environment, Evaluable
 _T = TypeVar("_T")
 
 
-def evalf(param: Evaluable[_T], time: int) -> _T:
+def evalf(param: Evaluable[_T], time: int, rng: np.random.Generator) -> _T:
     if callable(param):
-        return param(time)
+        return param(time, rng)
     return param
 
 
@@ -23,7 +23,7 @@ class ExpCool:
         self.q = q
         self.gen = 0
 
-    def __call__(self, time: int) -> float:
+    def __call__(self, time: int, rng: np.random.Generator) -> float:
         gen = time
         if gen > self.gen:
             self.gen = gen
@@ -38,7 +38,7 @@ class HypCool:
         self.deg = deg
         self.gen = 0
 
-    def __call__(self, time: int) -> float:
+    def __call__(self, time: int, rng: np.random.Generator) -> float:
         gen = time
         if gen > self.gen:
             self.gen = gen

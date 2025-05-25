@@ -245,7 +245,7 @@ class AddFitnessSharing:
             op=self._apply_niching,
             fnkwargs={
                 "keyf": keyf,
-                "beta": evalf(self._beta, self._env["time"]),
+                "beta": evalf(self._beta, self._env["time"], self._env["rng"]),
                 "toMax": self._env["goal"] == "max",
             },
             timingLabel="fitness_sharing",

@@ -27,7 +27,7 @@ class SelectLeft:
     def __call__(
         self, population: List[Individual], key: str, env: Environment, **kwargs
     ) -> None:
-        count = int(len(population) * evalf(self._ratio, env["time"]))
+        count = int(len(population) * evalf(self._ratio, env["time"], env["rng"]))
         idx = 0
         for loser in population[count:]:
             winner = population[idx]
@@ -115,7 +115,7 @@ class ProbOp:
     def __call__(
         self, population: List[Individual], key: str, env: Environment, **kwargs
     ) -> None:
-        prob = evalf(self.prob, env["time"])
+        prob = evalf(self.prob, env["time"], env["rng"])
         if env["rng"].random() < prob:
             self.op(population, key=key, env=env, **kwargs)
 
@@ -183,7 +183,7 @@ class RealMutation:
     def __call__(
         self, ind: Individual, key: str, time: int, rng: np.random.Generator
     ) -> None:
-        delta = evalf(self.delta, time)
+        delta = evalf(self.delta, time, rng)
         dim = len(ind[key])
         rng = rng
         for pos in range(dim):
@@ -197,7 +197,7 @@ class BinaryMutation:
     def __call__(
         self, ind: Individual, key: str, time: int, rng: np.random.Generator
     ) -> None:
-        prob = evalf(self.prob, time)
+        prob = evalf(self.prob, time, rng)
         dim = len(ind[key])
         rng = rng
         for pos in range(dim):
@@ -219,7 +219,7 @@ class Tournament:
         rng: np.random.Generator,
     ):
         ind1, ind2 = pair
-        pwin = evalf(self.pwin, time)
+        pwin = evalf(self.pwin, time, rng)
         A = goal.isBetter(ind1[key], ind2[key])
         B = rng.random() < pwin
         if A != B:  # xor
@@ -242,7 +242,7 @@ class UniformCrossover:
         rng: np.random.Generator,
     ) -> None:
         ind1, ind2 = pair
-        pswap = evalf(self.pswap, time)
+        pswap = evalf(self.pswap, time, rng)
         dim = target.dimension
         rng = rng
         for pos in range(dim):

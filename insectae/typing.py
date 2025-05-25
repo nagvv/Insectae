@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, Mapping, TypeVar, Union, List
+import numpy as np
 
 # from typing import TYPE_CHECKING
 
@@ -11,7 +12,7 @@ _T = TypeVar("_T")
 Individual = Dict[str, Any]
 FuncKWArgs = Dict[str, Any]
 Environment = Dict[str, Any]
-Evaluable = Union[_T, Callable[[int], _T]]
+Evaluable = Union[_T, Callable[[int, np.random.Generator], _T]]
 
 
 # class Environment(TypedDict, total=False):

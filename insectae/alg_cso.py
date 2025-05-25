@@ -39,7 +39,7 @@ class CompetitiveSwarmOptimizer(Algorithm):
         assert twoway is True
         ind1, ind2 = pair
         dim = target.dimension
-        phi = evalf(socialFactor, time)
+        phi = evalf(socialFactor, time, rng)
 
         if goal.isBetter(ind1[key], ind2[key]):
             winner, loser = ind1, ind2

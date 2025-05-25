@@ -57,7 +57,7 @@ class SimulatedAnnealing(Algorithm):
             self.population,
             self.accept,
             {
-                "theta": evalf(self.theta, self.env["time"]),
+                "theta": evalf(self.theta, self.env["time"], self.rng),
                 "goal": self.goal,
                 "rng": self.rng,
             },

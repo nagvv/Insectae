@@ -125,8 +125,8 @@ class PopulationBasedIncrementalLearning(Algorithm):
     def runGeneration(self) -> None:
         timer = self.env.get("timer")
         self.population.sort(key=self.goal.get_cmp_to_key(itemgetter("f")))
-        n_best = evalf(self._n_best, self.env["time"])
-        learning_rate = evalf(self._learning_rate, self.env["time"])
+        n_best = evalf(self._n_best, self.env["time"], self.rng)
+        learning_rate = evalf(self._learning_rate, self.env["time"], self.rng)
         probs = self.env["p"]
         probs = self.executor.reducePop(
             population=self.population[:n_best],
@@ -136,7 +136,7 @@ class PopulationBasedIncrementalLearning(Algorithm):
             timingLabel="reduce(probs)",
             timer=timer,
         )
-        n_worst = evalf(self._n_worst, self.env["time"])
+        n_worst = evalf(self._n_worst, self.env["time"], self.rng)
         probs = self.executor.reducePop(
             population=self.population[self.popSize - n_worst:],
             extract=self._extract,
@@ -146,8 +146,8 @@ class PopulationBasedIncrementalLearning(Algorithm):
             timer=timer,
         )
         self.probMutate({"": probs}, key="", time=self.env["time"], rng=self.rng)
-        p_max = evalf(self._p_max, self.env["time"])
-        p_min = evalf(self._p_min, self.env["time"])
+        p_max = evalf(self._p_max, self.env["time"], self.rng)
+        p_min = evalf(self._p_min, self.env["time"], self.rng)
         probs = probs.clip(min=p_min, max=p_max)
         self.env["p"] = probs
         self.executor.foreach(
