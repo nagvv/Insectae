@@ -12,3 +12,6 @@ dependencies = ["numpy", "matplotlib"]
 
 [tool.setuptools]
 packages = ["insectae", "insectae.parallel"]
+
+[tool.setuptools.dynamic]
+version = {attr = "insectae.__version__"}
