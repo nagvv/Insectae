@@ -21,6 +21,7 @@ from .common import (ExpCool, HypCool, evalf, get_args_from_env, l2metrics,
 from .decorators import (AddClearing, AddElite, AddFitnessSharing, RankIt,
                          TimeIt, decorate)
 from .executor import BaseExecutor
+from .experimenter import Experimenter
 from .goals import Goal, ToMax, ToMin
 from .helpers import from_ioh_problem, wrap_executor_evaluate
 from .metrics import Metrics
