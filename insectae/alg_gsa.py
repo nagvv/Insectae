@@ -2,7 +2,7 @@ from functools import partial
 from math import exp
 from operator import add
 from sys import float_info
-from typing import List
+from typing import Iterable
 
 import numpy as np
 
@@ -68,9 +68,9 @@ class GravitationalSearchAlgorithm(Algorithm):
         return mul / (dist + float_info.epsilon)
 
     @staticmethod
-    def _reduce_force(ind, paired_forces: List, rng: np.random.Generator):
+    def _reduce_force(ind, paired_forces: Iterable, rng: np.random.Generator):
         forces = (force * (ind2["x"] - ind["x"]) for force, ind2 in paired_forces)
-        weights = rng.uniform(size=(len(paired_forces),))
+        weights = rng.uniform(size=(len(list(paired_forces)),))
         ind["F"] = np.sum([force * w for force, w in zip(forces, weights)], axis=0)
 
     @staticmethod
