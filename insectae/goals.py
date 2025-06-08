@@ -28,7 +28,7 @@ class Goal:
             v1, v2 = accessor(obj1), accessor(obj2)
             if self.isBetter(v1, v2):
                 return -1
-            elif self.isBetter(v1, v2):
+            elif self.isBetter(v2, v1):
                 return 1
             else:
                 return 0
