@@ -177,19 +177,6 @@ class Experimenter:
                 opSelect=Tournament(1.0),
             ),
             partial(
-                UnivariateMarginalDistributionAlgorithm,
-                opSelect=Sorted(SelectLeft(0.7)),
-            ),
-            partial(
-                PopulationBasedIncrementalLearning,
-                probMutate=RealMutation(delta=0.01),
-                n_best=5,
-                n_worst=3,
-                p_max=0.95,
-                p_min=0.01,
-                learning_rate=0.1,
-            ),
-            partial(
                 FireflyAlgorithm,
                 alpha=0.01,
                 alphabest=0.002,
