@@ -154,7 +154,6 @@ class AddFitnessSharing:
     """
 
     NICHE_COUNT_KEY = "_fitness_sharing_niche_count"
-    ORIG_F_KEY = "_fitness_sharing_orig_f"
 
     def __init__(
         self,
@@ -199,7 +198,7 @@ class AddFitnessSharing:
 
     @staticmethod
     def _apply_niching(ind: Individual, keyf: str, beta: Optional[float], toMax: bool):
-        f_value = ind[AddFitnessSharing.ORIG_F_KEY]
+        f_value = ind[keyf]
         if beta is not None:
             f_value **= beta
         if toMax:
@@ -236,7 +235,7 @@ class AddFitnessSharing:
         self_executor._fitness_sharing_orig_evaluate(
             population=population,
             keyx=keyx,
-            keyf=AddFitnessSharing.ORIG_F_KEY,
+            keyf=keyf,
             target=target,
             **kwargs,
         )
@@ -312,7 +311,6 @@ class AddClearing:
        computation. – IEEE, 1996. – С. 798-803.
     """
 
-    ORIG_F_KEY = "_clearing_orig_f"
     IS_NICHE_WINNER_KEY = "_clearing_is_niche_winner"
 
     def __init__(
@@ -352,21 +350,18 @@ class AddClearing:
         sigma: float,
         capacity: int,
         to_max: bool,
+        keyf: str
     ) -> None:
         # stores the following values: (disance, fitness value, is ind)
         niche = np.fromiter(
-            (
-                (d, ind[AddClearing.ORIG_F_KEY], 0)
-                for d, ind in paired_dists
-                if d <= sigma
-            ),
+            ((d, ind[keyf], 0) for d, ind in paired_dists if d <= sigma),
             dtype=np.dtype((float, 3)),
         )
         if len(niche) == 0:
             ind[AddClearing.IS_NICHE_WINNER_KEY] = True
             return
 
-        niche = np.concatenate((niche, [(0, ind[AddClearing.ORIG_F_KEY], 1)]), axis=0)
+        niche = np.concatenate((niche, [(0, ind[keyf], 1)]), axis=0)
         cap = min(capacity, len(niche))
         if to_max is True:
             niche = niche[(-niche[:, 1]).argpartition(kth=cap - 1)[:cap]]
@@ -376,9 +371,7 @@ class AddClearing:
 
     @staticmethod
     def _apply_niching(ind: Individual, keyf: str, to_max: bool) -> None:
-        if ind[AddClearing.IS_NICHE_WINNER_KEY] != 0:
-            ind[keyf] = ind[AddClearing.ORIG_F_KEY]
-        else:
+        if ind[AddClearing.IS_NICHE_WINNER_KEY] == 0:
             ind[keyf] = -np.inf if to_max else np.inf
 
     def _evaluate(
@@ -395,7 +388,7 @@ class AddClearing:
         self_executor._clearing_orig_evaluate(
             population=population,
             keyx=keyx,
-            keyf=AddClearing.ORIG_F_KEY,
+            keyf=keyf,
             target=target,
             **kwargs,
         )
@@ -409,6 +402,7 @@ class AddClearing:
                 "sigma": self._sigma,
                 "capacity": self._capacity,
                 "to_max": self._to_max,
+                "keyf": keyf
             },
             timingLabel="clearing",
             timer=timer,
