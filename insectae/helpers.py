@@ -67,6 +67,16 @@ def from_ioh_problem(
     return target, goal, metrics
 
 
+class _RestoreEvaluate:
+    def __init__(self, executor: BaseExecutor, orig_evaluate_field: str) -> None:
+        self.executor = executor
+        self.orig_evaluate_field = orig_evaluate_field
+
+    def __call__(self) -> None:
+        self.executor.evaluate = getattr(self.executor, self.orig_evaluate_field)
+        delattr(self.executor, self.orig_evaluate_field)
+
+
 def wrap_executor_evaluate(
     executor: BaseExecutor,
     new_evaluate: Callable,
@@ -74,9 +84,4 @@ def wrap_executor_evaluate(
 ):
     setattr(executor, orig_evaluate_field, executor.evaluate)
     executor.evaluate = MethodType(new_evaluate, executor)
-
-    def restore():
-        executor.evaluate = getattr(executor, orig_evaluate_field)
-        delattr(executor, orig_evaluate_field)
-
-    return restore
+    return _RestoreEvaluate(executor, orig_evaluate_field)
