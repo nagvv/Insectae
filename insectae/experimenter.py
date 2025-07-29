@@ -1,5 +1,6 @@
 from copy import deepcopy
 from functools import partial
+from itertools import repeat
 from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -23,6 +24,7 @@ from .operators import (ProbOp, RealMutation, SelectLeft, ShuffledNeighbors,
                         Sorted, TimedOp, Tournament, UniformCrossover)
 from .stops import StopMaxGeneration
 from .targets import BinaryTarget, PermutationTarget, RealTarget, Target
+from .decorators import decorate
 
 
 class _wire_args_eval:
@@ -47,6 +49,8 @@ class Experimenter:
         executor: Optional[BaseExecutor] = None,
         runs_count: int = 10,
         iters_count: int = 100,
+        decorators: Optional[List[Callable]] = None,
+        op_init: Optional[Callable[..., None]] = None
     ) -> None:
         self.target = target
         self.goal = goal
@@ -57,16 +61,22 @@ class Experimenter:
         self.runs_count = runs_count
         self.iters_count = iters_count
         self.stop = StopMaxGeneration(self.iters_count, metrics=self.metrics)
+        self.decorators = decorators or []
+        self.op_init = op_init
 
     @staticmethod
-    def build_and_run(builder: Callable[..., Algorithm]) -> Algorithm:
+    def build_and_run(builder: Callable[..., Algorithm], decorators) -> Algorithm:
         alg = builder()
+        decorate(alg, decorators)
         alg.run()
         return alg
 
     def run(self):
         alg_builders = self._get_algorithm_builders(self.target)
-        finished_algs = self.executor.starmap(self.build_and_run, zip(alg_builders))
+        finished_algs = self.executor.starmap(
+            self.build_and_run,
+            zip(alg_builders, (deepcopy(d) for d in repeat(self.decorators))),
+        )
         # fill results per run list
         results_per_run = []
         alg_names = set()
@@ -135,7 +145,7 @@ class Experimenter:
                 "goal": self.goal,
                 "stop": self.stop,
                 "popSize": pop_size,
-                "opInit": None,  # default, i.e. target.defaultInit()
+                "opInit": self.op_init,
             }
             for _ in range(self.runs_count):
                 alg_builders.extend(partial(b, **deepcopy(common_args)) for b in _builders)
