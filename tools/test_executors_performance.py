@@ -7,8 +7,8 @@ from typing import Any, Callable, Iterable, List
 
 import numpy as np
 from insectae import BaseExecutor
-from insectae.parallel import (DaskExecutor, MPIExecutor,
-                               MultiprocessingExecutor, ThreadingExecutor)
+from insectae.parallel import (MPIExecutor, MultiprocessingExecutor,
+                               RayExecutor, ThreadingExecutor)
 from insectae.typing import Individual
 from numba import float64, njit
 from numpy.typing import NDArray
@@ -79,6 +79,7 @@ def run_tests(
     population: List[Individual],
     executor_gens: Iterable[Callable[[], BaseExecutor]],
     duration: int,
+    put_target_in_context: bool = False,
 ):
     # run functions once to let everything necessary to be created/cached
     expected_value = target_func(test_array)
@@ -88,8 +89,12 @@ def run_tests(
         "sec",
     )
     target = DummyTarget(target_func)
+    context = {}
+    if put_target_in_context:
+        context["target"] = target
     for executor_gen in executor_gens:
         executor = executor_gen()
+        executor.init(context=context, rng=np.random.default_rng())
         executor_name = type(executor).__name__
         # run evaluation once to let everything necessary to be created/cached
         executor.evaluate(population, keyx="x", keyf="f", target=target)
@@ -137,39 +142,59 @@ if __name__ == "__main__":
         help="number of workers/processes/threads to use",
     )
     parser.add_argument(
+        "--chunksize", type=int, help="chunck size to use with executors"
+    )
+    parser.add_argument(
         "-t",
         "--target-dur",
         type=int,
         default=10,
         help="how much time takes one execution of the target function in ms",
     )
+    parser.add_argument(
+        "-e",
+        "--executors",
+        choices=["sequential", "thread", "processes", "mpi", "ray"],
+        nargs="+",
+        default=["sequential", "thread", "processes", "mpi", "ray"],
+        help="which executors to test",
+    )
+    parser.add_argument("--test-nogil", action="store_true")
+    parser.add_argument("--put-target-in-context", action="store_true")
     args = parser.parse_args()
     print(args)
-    print()
+    print()  # newline
 
     test_array = np.ones(args.array_size, dtype=np.float64)
     population = [{"x": test_array, "f": 0}] * args.popsize
-    executor_gens = (
-        partial(BaseExecutor),
-        partial(ThreadingExecutor, processes=args.numproc),
-        partial(MultiprocessingExecutor, processes=args.numproc),
-        partial(MPIExecutor, max_workers=args.numproc),
-        partial(DaskExecutor, n_workers=args.numproc, threads_per_worker=1),
-        partial(DaskExecutor, n_workers=args.numproc, threads_per_worker=1),
-    )
+    executor_gens_map = {
+        "sequential": partial(BaseExecutor),
+        "thread": partial(
+            ThreadingExecutor, processes=args.numproc, chunksize=args.chunksize
+        ),
+        "processes": partial(
+            MultiprocessingExecutor, processes=args.numproc, chunksize=args.chunksize
+        ),
+        "mpi": partial(MPIExecutor, processes=args.numproc, chunksize=args.chunksize),
+        "ray": partial(RayExecutor, processes=args.numproc, chunksize=args.chunksize),
+    }
+    executor_gens = [e for k, e in executor_gens_map.items() if k in args.executors]
     run_tests(
         partial(base_test_func, dur_ms=args.target_dur, payload_func=payload_func),
         func_name="gil variant",
         executor_gens=executor_gens,
         population=population,
         duration=args.duration,
+        put_target_in_context=args.put_target_in_context,
     )
-    run_tests(
-        partial(
-            base_test_func, dur_ms=args.target_dur, payload_func=payload_func_nogil
-        ),
-        func_name="nogil variant",
-        executor_gens=executor_gens,
-        population=population,
-        duration=args.duration,
-    )
+    if args.test_nogil:
+        run_tests(
+            partial(
+                base_test_func, dur_ms=args.target_dur, payload_func=payload_func_nogil
+            ),
+            func_name="nogil variant",
+            executor_gens=executor_gens,
+            population=population,
+            duration=args.duration,
+            put_target_in_context=args.put_target_in_context,
+        )
