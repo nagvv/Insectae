@@ -116,13 +116,16 @@ class RayExecutor(BaseExecutor):
                 population, keyx, keyf, target, reEvalKey, executor=None, **kwargs
             )
 
+        executor = self
+        if "target" in self.context_keys:
+            executor = _EvaluateWithContext(self.pool, self.chunksize)
         return evaluate(
             population,
             keyx,
             keyf,
             target,
             reEvalKey,
-            executor=_EvaluateWithContext(self.pool, self.chunksize),
+            executor=executor,
             **kwargs,
         )
 
