@@ -1,4 +1,4 @@
-from threading import Thread
+from threading import Thread, Lock
 from time import time
 from typing import Any, Dict, List
 
@@ -63,7 +63,9 @@ class MPICommunication(Communication):
         islands_count = env["im_topo_size"]
         if islands_count > comm_size:
             # there are more islands than workers
-            raise RuntimeError("there are more islands than MPI processes")
+            raise RuntimeError(
+                f"there are more islands than MPI processes: {islands_count} vs {comm_size}"
+            )
         test_reqs = []
         for tgt_rank in range(comm_size):
             if tgt_rank == rank:
@@ -102,6 +104,7 @@ class MPICommunication(Communication):
             "active": True,
             "cur_req": MPI.REQUEST_NULL,
             "queue": [],
+            "lock": Lock()
         }
         recv_t = env[MPICommunication.RECV_THREAD_KEY] = Thread(
             target=self.recv_worker, args=[state, rank_to_target]
@@ -111,11 +114,13 @@ class MPICommunication(Communication):
     @staticmethod
     def _deinit(_: List[Individual], env: Environment) -> None:
         state = env[MPICommunication.RECV_STATE_KEY]
-        state["active"] = False
-        try:
-            state["cur_req"].cancel()
-        except MPI.Exception:
-            pass
+        with state["lock"]:
+            state["active"] = False
+            try:
+                if state["cur_req"] != MPI.REQUEST_NULL:
+                    state["cur_req"].cancel()
+            except MPI.Exception:
+                pass
         env[MPICommunication.RECV_THREAD_KEY].join()
         del env[MPICommunication.RECV_THREAD_KEY]  # unpickleable
         del env[MPICommunication.RECV_STATE_KEY]  # unpickleable
@@ -124,8 +129,11 @@ class MPICommunication(Communication):
         del env[MPICommunication.SEND_REQUESTS_KEY]  # unpickleable
 
     def recv_worker(self, state: dict, rank_to_target: Dict[int, int]) -> None:
-        while state["active"]:
-            recv_req = state["cur_req"] = MPI.COMM_WORLD.irecv(tag=self.comm_tag)
+        while True:
+            with state["lock"]:
+                if not state["active"]:
+                    break
+                recv_req = state["cur_req"] = MPI.COMM_WORLD.irecv(tag=self.comm_tag)
             status = MPI.Status()
             value = recv_req.wait(status)
             if not status.cancelled:
