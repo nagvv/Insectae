@@ -1,6 +1,7 @@
-from threading import Thread, Lock
+from threading import Lock, Thread
 from time import time
 from typing import Any, Dict, List
+from warnings import warn
 
 from mpi4py import MPI
 
@@ -16,9 +17,11 @@ class MPICommunication(Communication):
     TARGET_TO_RANK = "comm_target_to_rank"
     RANK_TO_TARGET = "comm_rank_to_target"
     COMM_TAG = "comm_tag"
+    SERVICE_TAG = "comm_service_tag"
 
-    def __init__(self, tag=0, timeout=3) -> None:
+    def __init__(self, tag=0, service_tag=None, timeout=3) -> None:
         self.comm_tag = tag
+        self.service_tag = service_tag or tag + 1
         self.timeout = timeout
 
     @staticmethod
@@ -49,7 +52,8 @@ class MPICommunication(Communication):
         if "MPICommunication" in alg.decorators:
             return
 
-        alg.env["comm_tag"] = self.comm_tag
+        alg.env[MPICommunication.COMM_TAG] = self.comm_tag
+        alg.env[MPICommunication.SERVICE_TAG] = self.service_tag
         alg.addProcedure("start", self._init)
         alg.addProcedure("finish", self._deinit)
         alg.decorators.append("MPICommunication")
@@ -58,7 +62,7 @@ class MPICommunication(Communication):
         # find out which island on which rank sits; we can not use collective
         # operations here, because it is not guaranteed that the amount of
         # islands is equal to the amount of MPI workers
-        rank = MPI.COMM_WORLD.Get_rank()
+        my_rank = MPI.COMM_WORLD.Get_rank()
         comm_size = MPI.COMM_WORLD.Get_size()
         islands_count = env["im_topo_size"]
         if islands_count > comm_size:
@@ -66,19 +70,25 @@ class MPICommunication(Communication):
             raise RuntimeError(
                 f"there are more islands than MPI processes: {islands_count} vs {comm_size}"
             )
+        if comm_size > islands_count:
+            warn(
+                f"there are more MPI processes than islands ({comm_size} vs {islands_count}) "
+                f"it is highly recommended that these numbers match, otherwise "
+                f"the operation may be unstable;"
+            )
         test_reqs = []
         for tgt_rank in range(comm_size):
-            if tgt_rank == rank:
+            if tgt_rank == my_rank:
                 continue
             test_reqs.append(
                 MPI.COMM_WORLD.isend(
-                    (env["im_topo_idx"], rank), dest=tgt_rank, tag=self.comm_tag
+                    (env["im_topo_idx"], my_rank), dest=tgt_rank, tag=self.service_tag
                 )
             )
-        target_to_rank = {env["im_topo_idx"]: rank}
-        rank_to_target = {rank: env["im_topo_idx"]}
+        target_to_rank = {env["im_topo_idx"]: my_rank}
+        rank_to_target = {my_rank: env["im_topo_idx"]}
         recv_reqs = [
-            MPI.COMM_WORLD.irecv(tag=self.comm_tag) for _ in range(islands_count - 1)
+            MPI.COMM_WORLD.irecv(tag=self.service_tag) for _ in range(islands_count - 1)
         ]
         waiting_start_tp = time()
         while True:  # active waiting
@@ -104,7 +114,7 @@ class MPICommunication(Communication):
             "active": True,
             "cur_req": MPI.REQUEST_NULL,
             "queue": [],
-            "lock": Lock()
+            "lock": Lock(),
         }
         recv_t = env[MPICommunication.RECV_THREAD_KEY] = Thread(
             target=self.recv_worker, args=[state, rank_to_target]
@@ -113,6 +123,22 @@ class MPICommunication(Communication):
 
     @staticmethod
     def _deinit(_: List[Individual], env: Environment) -> None:
+        send_reqs = env.setdefault(MPICommunication.SEND_REQUESTS_KEY, [])
+        MPI.Request.waitall(send_reqs)  # wait till all sends are exhausted
+        # improvised barrier to ensure sends are exhausted on every island
+        barrier_recv_reqs = [
+            MPI.COMM_WORLD.irecv(tag=env[MPICommunication.SERVICE_TAG])
+            for _ in range(env["im_topo_size"] - 1)
+        ]
+        for idx in range(env["im_topo_size"]):
+            if idx == env["im_topo_idx"]:
+                continue
+            MPI.COMM_WORLD.send(
+                None,
+                env[MPICommunication.TARGET_TO_RANK][idx],
+                env[MPICommunication.SERVICE_TAG],
+            )
+        MPI.Request.waitall(barrier_recv_reqs)
         state = env[MPICommunication.RECV_STATE_KEY]
         with state["lock"]:
             state["active"] = False
